@@ -16,7 +16,7 @@ lazy val commonSettings = Seq(
     catsEffect,
     circe,
     circeGeneric,
-    "org.mockito" %% "mockito-scala" % "1.17.12" % Test,
+    mockito % Test,
     scalaTest % Test,
   ),
   scalaVersion := "2.13.10",
@@ -67,9 +67,9 @@ lazy val s3 = (project in file("s3"))
   description := "A project containing useful methods for interacting with S3",
   libraryDependencies ++= Seq(
     s3Sdk,
-    "software.amazon.awssdk" % "s3-transfer-manager" % "2.20.65",
-    "software.amazon.awssdk.crt" % "aws-crt" % "0.21.15",
-    "io.projectreactor" % "reactor-test" % "3.5.6" % Test
+    transferManager,
+    awsCrt,
+    reactorTest % Test
   )
 )
 
