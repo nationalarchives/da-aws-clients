@@ -6,7 +6,7 @@ You will need these dependencies:
 @@dependency[sbt,Maven,Gradle] {
 group="uk.gov.nationalarchives" artifact="da-s3-client_2.13" version=$version$
 group2="dev.zio" artifact2="zio-interop-reactivestreams_2.13" version2="2.0.2"
-group3="dev.zio" artifact3="zio-interop-cats_2.13" version3="23.0.05"
+group3="dev.zio" artifact3="zio-interop-cats_2.13" version3="23.0.0.5"
 }
 
 `zio-interop-cats` is needed to allow us to use the ZIO Task with the cats type classes

@@ -5,7 +5,7 @@ You will need these dependencies
 
 @@dependency[sbt,Maven,Gradle] {
 group="uk.gov.nationalarchives" artifact="da-sqs-client_2.13" version=$version$
-group3="dev.zio" artifact3="zio-interop-cats_2.13" version3="23.0.05"
+group3="dev.zio" artifact3="zio-interop-cats_2.13" version3="23.0.0.5"
 }
 
 ## Examples
