@@ -21,8 +21,9 @@ jobs:
           fetch-depth: 0
       - name: Update docs site
         run: |
-          git checkout gh-pages
           sbt 'docs / makeSite'
+          git checkout gh-pages
+          rm -rf docs
           mkdir docs && cp -r site-docs/target/site/* docs
           git add docs
           git commit -m "Update site documentation"
