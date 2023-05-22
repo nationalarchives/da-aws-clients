@@ -89,7 +89,7 @@ lazy val docs = (project in file("site-docs"))
     publish / skip := true,
   ).enablePlugins(ParadoxSitePlugin, ScalaUnidocPlugin, SitePreviewPlugin)
   .settings(
-    paradoxProperties += ("version" -> (ThisBuild / version).value),
+    paradoxProperties += ("version" -> (ThisBuild / version).value.split("-").head),
     paradoxTheme := Some(builtinParadoxTheme("generic")),
     ScalaUnidoc / siteSubdirName := "api",
     addMappingsToSiteDir(ScalaUnidoc / packageDoc / mappings, ScalaUnidoc / siteSubdirName)
