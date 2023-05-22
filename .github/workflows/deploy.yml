@@ -1,0 +1,29 @@
+name: DP Deploy AWS Clients
+on:
+  workflow_dispatch:
+jobs:
+  deploy:
+    uses: nationalarchives/tdr-github-actions/.github/workflows/sbt_release.yml@main
+    with:
+      library-name: "Preservica Client"
+    secrets:
+      WORKFLOW_PAT: ${{ secrets.WORKFLOW_TOKEN }}
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+      SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+      SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Update docs site
+        run: |
+          git checkout gh-pages
+          sbt 'docs / makeSite'
+          mkdir docs && cp -r site-docs/target/site/* docs
+          git add docs
+          git commit -m "Update site documentation"
+          git push -u origin gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
