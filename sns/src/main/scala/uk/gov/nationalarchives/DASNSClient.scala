@@ -21,8 +21,8 @@ class DASNSClient[F[_] : Async](snsAsyncClient: SnsAsyncClient) {
 
   /** Deserialises the provided value to JSON and sends to the provided SNS topic.
    *
-   * @param queueUrl
-   * The url for the SNS queue
+   * @param topicArn
+   * The arn for the SNS topic
    * @param message
    * A case class which will be deserialised to JSON and sent to the topic or a json string
    * @param enc
