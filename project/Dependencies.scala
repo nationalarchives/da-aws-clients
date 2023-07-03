@@ -15,5 +15,5 @@ object Dependencies {
   lazy val scalaTest = "org.scalatest" %% "scalatest" % "3.2.15"
   lazy val snsSdk = "software.amazon.awssdk" % "sns" % awsSdkVersion
   lazy val sqsSdk = "software.amazon.awssdk" % "sqs" % awsSdkVersion
-  lazy val transferManager = "software.amazon.awssdk" % "s3-transfer-manager" % "2.20.65"
+  lazy val transferManager = "software.amazon.awssdk" % "s3-transfer-manager" % awsSdkVersion
 }
