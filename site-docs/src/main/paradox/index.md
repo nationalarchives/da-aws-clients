@@ -9,6 +9,7 @@ View the [Scaladoc](api/uk/gov/nationalarchives/index.html)
 @@@ index
 
 * [S3 Client Usage](s3/usage/index.md)
+* [SNS Client Usage](sns/usage/index.md)
 * [SQS Client Usage](sqs/usage/index.md)
 
 @@@

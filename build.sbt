@@ -82,6 +82,15 @@ lazy val sqs = (project in file("sqs"))
   )
 )
 
+lazy val sns = (project in file("sns"))
+  .settings(commonSettings).settings(
+  name := "da-sns-client",
+  description := "A project containing useful methods for interacting with SNS",
+  libraryDependencies ++= Seq(
+    snsSdk
+  )
+)
+
 lazy val docs = (project in file("site-docs"))
   .settings(
     name := "da-aws-docs",

@@ -1,7 +1,7 @@
 import sbt._
 
 object Dependencies {
-  private val awsSdkVersion = "2.20.26"
+  private val awsSdkVersion = "2.20.69"
   private val circeVersion = "0.14.5"
 
   lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.21.15"
@@ -13,6 +13,7 @@ object Dependencies {
   lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.5.6"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val scalaTest = "org.scalatest" %% "scalatest" % "3.2.15"
+  lazy val snsSdk = "software.amazon.awssdk" % "sns" % awsSdkVersion
   lazy val sqsSdk = "software.amazon.awssdk" % "sqs" % awsSdkVersion
-  lazy val transferManager = "software.amazon.awssdk" % "s3-transfer-manager" % "2.20.65"
+  lazy val transferManager = "software.amazon.awssdk" % "s3-transfer-manager" % awsSdkVersion
 }
