@@ -27,7 +27,9 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     when(snsAsyncClient.publishBatch(publishCaptor.capture())).thenReturn(mockResponse)
 
     val client = new DASNSClient[IO](snsAsyncClient)
-    client.publish("mockTopicArn")(List(Test("testMessage1", "testValue1"), Test("testMessage2", "testValue2"))).unsafeRunSync()
+    client
+      .publish("mockTopicArn")(List(Test("testMessage1", "testValue1"), Test("testMessage2", "testValue2")))
+      .unsafeRunSync()
 
     val publishValue = publishCaptor.getValue
 
@@ -53,9 +55,9 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     client.publish("mockTopicArn")(messages).unsafeRunSync()
 
     val publishedBatchRequests: List[PublishBatchRequest] = publishCaptor.getAllValues.asScala.toList
-    val batchRequestEntries1 =  publishedBatchRequests.head.publishBatchRequestEntries()
-    val batchRequestEntries2 =  publishedBatchRequests(1).publishBatchRequestEntries()
-    val batchRequestEntries3 =  publishedBatchRequests(2).publishBatchRequestEntries()
+    val batchRequestEntries1 = publishedBatchRequests.head.publishBatchRequestEntries()
+    val batchRequestEntries2 = publishedBatchRequests(1).publishBatchRequestEntries()
+    val batchRequestEntries3 = publishedBatchRequests(2).publishBatchRequestEntries()
 
     val batchMessages1: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries1)
     val batchMessages2: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries2)
@@ -79,12 +81,16 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val client = new DASNSClient[IO](snsAsyncClient)
 
     val ex = intercept[Exception] {
-      client.publish("mockTopicArn")(List(Test("testMessage1", "testValue1"), Test("testMessage2", "testValue2"))).unsafeRunSync()
+      client
+        .publish("mockTopicArn")(List(Test("testMessage1", "testValue1"), Test("testMessage2", "testValue2")))
+        .unsafeRunSync()
     }
     ex.getMessage should equal("Error sending message")
   }
 
-  private def getMessagesFromBatchRequestEntries(batchRequestEntry: util.List[PublishBatchRequestEntry]): List[String] = {
+  private def getMessagesFromBatchRequestEntries(
+      batchRequestEntry: util.List[PublishBatchRequestEntry]
+  ): List[String] = {
     val batchEntries: List[PublishBatchRequestEntry] = batchRequestEntry.asScala.toList
     batchEntries.map(_.message())
   }
