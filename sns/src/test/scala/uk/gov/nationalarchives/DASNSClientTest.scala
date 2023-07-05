@@ -88,6 +88,67 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     ex.getMessage should equal("Error sending message")
   }
 
+  "publishBatch" should "attempt to send two batches but return an error if the second batch fails" in {
+    val snsAsyncClient = mock[SnsAsyncClient]
+    val publishCaptor: ArgumentCaptor[PublishBatchRequest] = ArgumentCaptor.forClass(classOf[PublishBatchRequest])
+    val mockResponse = CompletableFuture.completedFuture(PublishBatchResponse.builder().build())
+    when(snsAsyncClient.publishBatch(publishCaptor.capture()))
+      .thenReturn(mockResponse)
+      .andThenThrow(new Exception("Error sending messages"))
+
+    val messages = (1 to 15).toList.map(number => Test(s"testMessage$number", s"testValue$number"))
+    val convertNumberToJsonMessage = (number: Int) => s"""{"message":"testMessage$number","value":"testValue$number"}"""
+
+    val client = new DASNSClient[IO](snsAsyncClient)
+    val ex = intercept[Exception] {
+      client.publish("mockTopicArn")(messages).unsafeRunSync()
+    }
+
+    val publishedBatchRequests: List[PublishBatchRequest] = publishCaptor.getAllValues.asScala.toList
+    val batchRequestEntries1 = publishedBatchRequests.head.publishBatchRequestEntries()
+    val batchRequestEntries2 = publishedBatchRequests(1).publishBatchRequestEntries()
+
+    val batchMessages1: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries1)
+    val batchMessages2: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries2)
+
+    publishedBatchRequests.length should be(2)
+    batchRequestEntries1.size() should be(10)
+    batchMessages1 should be((1 to 10).toList.map(convertNumberToJsonMessage))
+
+    batchRequestEntries2.size() should be(5)
+    batchMessages2 should be((11 to 15).toList.map(convertNumberToJsonMessage))
+
+    ex.getMessage should equal("Error sending messages")
+  }
+
+  "publishBatch" should "attempt the first batch, return an error if the first batch fails and not send the second batch" in {
+    val snsAsyncClient = mock[SnsAsyncClient]
+    val publishCaptor: ArgumentCaptor[PublishBatchRequest] = ArgumentCaptor.forClass(classOf[PublishBatchRequest])
+    val mockResponse = CompletableFuture.completedFuture(PublishBatchResponse.builder().build())
+    when(snsAsyncClient.publishBatch(publishCaptor.capture()))
+      .thenThrow(new Exception("Error sending messages"))
+      .andThenAnswer(mockResponse)
+
+    val messages = (1 to 15).toList.map(number => Test(s"testMessage$number", s"testValue$number"))
+    val convertNumberToJsonMessage = (number: Int) => s"""{"message":"testMessage$number","value":"testValue$number"}"""
+
+    val client = new DASNSClient[IO](snsAsyncClient)
+    val ex = intercept[Exception] {
+      client.publish("mockTopicArn")(messages).unsafeRunSync()
+    }
+
+    val publishedBatchRequests: List[PublishBatchRequest] = publishCaptor.getAllValues.asScala.toList
+    val batchRequestEntries1 = publishedBatchRequests.head.publishBatchRequestEntries()
+
+    val batchMessages1: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries1)
+
+    publishedBatchRequests.length should be(1)
+    batchRequestEntries1.size() should be(10)
+    batchMessages1 should be((1 to 10).toList.map(convertNumberToJsonMessage))
+
+    ex.getMessage should equal("Error sending messages")
+  }
+
   private def getMessagesFromBatchRequestEntries(
       batchRequestEntry: util.List[PublishBatchRequestEntry]
   ): List[String] = {
