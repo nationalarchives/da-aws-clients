@@ -33,9 +33,9 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
 
     val publishValue = publishCaptor.getValue
 
-    val batchMessages: List[String] = getMessagesFromBatchRequestEntries(publishValue.publishBatchRequestEntries())
+    val messagesBatch: List[String] = getMessagesFromBatchRequestEntries(publishValue.publishBatchRequestEntries())
 
-    batchMessages should be(
+    messagesBatch should be(
       List("""{"message":"testMessage1","value":"testValue1"}""", """{"message":"testMessage2","value":"testValue2"}""")
     )
 
@@ -59,19 +59,19 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val batchRequestEntries2 = publishedBatchRequests(1).publishBatchRequestEntries()
     val batchRequestEntries3 = publishedBatchRequests(2).publishBatchRequestEntries()
 
-    val batchMessages1: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries1)
-    val batchMessages2: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries2)
-    val batchMessages3: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries3)
+    val messagesBatch1: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries1)
+    val messagesBatch2: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries2)
+    val messagesBatch3: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries3)
 
     publishedBatchRequests.length should be(3)
     batchRequestEntries1.size() should be(10)
-    batchMessages1 should be((1 to 10).toList.map(convertNumberToJsonMessage))
+    messagesBatch1 should be((1 to 10).toList.map(convertNumberToJsonMessage))
 
     batchRequestEntries2.size() should be(10)
-    batchMessages2 should be((11 to 20).toList.map(convertNumberToJsonMessage))
+    messagesBatch2 should be((11 to 20).toList.map(convertNumberToJsonMessage))
 
     batchRequestEntries3.size() should be(3)
-    batchMessages3 should be((21 to 23).toList.map(convertNumberToJsonMessage))
+    messagesBatch3 should be((21 to 23).toList.map(convertNumberToJsonMessage))
   }
 
   "publishBatch" should "return an error if there is an error sending to the topic" in {
@@ -108,15 +108,15 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val batchRequestEntries1 = publishedBatchRequests.head.publishBatchRequestEntries()
     val batchRequestEntries2 = publishedBatchRequests(1).publishBatchRequestEntries()
 
-    val batchMessages1: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries1)
-    val batchMessages2: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries2)
+    val messagesBatch1: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries1)
+    val messagesBatch2: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries2)
 
     publishedBatchRequests.length should be(2)
     batchRequestEntries1.size() should be(10)
-    batchMessages1 should be((1 to 10).toList.map(convertNumberToJsonMessage))
+    messagesBatch1 should be((1 to 10).toList.map(convertNumberToJsonMessage))
 
     batchRequestEntries2.size() should be(5)
-    batchMessages2 should be((11 to 15).toList.map(convertNumberToJsonMessage))
+    messagesBatch2 should be((11 to 15).toList.map(convertNumberToJsonMessage))
 
     ex.getMessage should equal("Error sending messages")
   }
@@ -140,11 +140,11 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val publishedBatchRequests: List[PublishBatchRequest] = publishCaptor.getAllValues.asScala.toList
     val batchRequestEntries1 = publishedBatchRequests.head.publishBatchRequestEntries()
 
-    val batchMessages1: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries1)
+    val messagesBatch1: List[String] = getMessagesFromBatchRequestEntries(batchRequestEntries1)
 
     publishedBatchRequests.length should be(1)
     batchRequestEntries1.size() should be(10)
-    batchMessages1 should be((1 to 10).toList.map(convertNumberToJsonMessage))
+    messagesBatch1 should be((1 to 10).toList.map(convertNumberToJsonMessage))
 
     ex.getMessage should equal("Error sending messages")
   }
