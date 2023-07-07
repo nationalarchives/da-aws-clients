@@ -8,7 +8,7 @@ lazy val root = (project in file("."))
     name := "da-aws-client",
     publish / skip := true
   ).settings(commonSettings)
-  .aggregate(sqs, s3)
+  .aggregate(sqs, sns, s3)
 
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
