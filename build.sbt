@@ -10,6 +10,7 @@ lazy val root = (project in file("."))
   ).settings(commonSettings)
   .aggregate(sqs, sns, s3, dynamoDb)
 
+
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     catsCore,
