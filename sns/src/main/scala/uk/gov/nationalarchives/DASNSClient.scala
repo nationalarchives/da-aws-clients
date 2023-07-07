@@ -10,28 +10,28 @@ import software.amazon.awssdk.services.sns.SnsAsyncClient
 import software.amazon.awssdk.services.sns.model.{PublishRequest, PublishResponse}
 
 /** An SNS client. It is written generically so can be used for any effect which has an Async instance. Requires an
- * implicit instance of cats Async which is used to convert CompletableFuture to F
- *
- * @param snsAsyncClient
- * An AWS SNS Async client
- * @tparam F
- * Type of the effect
- */
-class DASNSClient[F[_] : Async](snsAsyncClient: SnsAsyncClient) {
+  * implicit instance of cats Async which is used to convert CompletableFuture to F
+  *
+  * @param snsAsyncClient
+  *   An AWS SNS Async client
+  * @tparam F
+  *   Type of the effect
+  */
+class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient) {
 
   /** Deserialises the provided value to JSON and sends to the provided SNS topic.
-   *
-   * @param topicArn
-   * The arn for the SNS topic
-   * @param message
-   * A case class which will be deserialised to JSON and sent to the topic or a json string
-   * @param enc
-   * A circe encoder which will encode the case class to JSON
-   * @tparam T
-   * The case class with the message
-   * @return
-   * The response from the send message call wrapped with F[_]
-   */
+    *
+    * @param topicArn
+    *   The arn for the SNS topic
+    * @param message
+    *   A case class which will be deserialised to JSON and sent to the topic or a json string
+    * @param enc
+    *   A circe encoder which will encode the case class to JSON
+    * @tparam T
+    *   The case class with the message
+    * @return
+    *   The response from the send message call wrapped with F[_]
+    */
   def publish[T <: Product](topicArn: String)(message: T)(implicit enc: Encoder[T]): F[PublishResponse] = {
     val messageRequest = PublishRequest.builder
       .topicArn(topicArn)
@@ -49,5 +49,5 @@ object DASNSClient {
     .httpClient(httpClient)
     .build()
 
-  def apply[F[_] : Async]() = new DASNSClient[F](snsClient)
+  def apply[F[_]: Async]() = new DASNSClient[F](snsClient)
 }
