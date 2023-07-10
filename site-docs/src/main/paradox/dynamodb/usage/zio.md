@@ -21,8 +21,8 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 import uk.gov.nationalarchives.DADynamoDBClient
 import uk.gov.nationalarchives.DADynamoDBClient.DynamoDbRequest
 
-val s3Client = DADynamoDBClient[Task]()
-def getItem(tableName: String, primaryKeyName: String, primaryKeyValue: String, itemName: String): IO[AttributeValue] = {
+val zioClient = DADynamoDBClient[Task]()
+def getAttributeValue(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String): IO[AttributeValue] = {
   val primaryKeyAttribute = AttributeValue
     .builder()
     .s(primaryKeyValue) // '.s' for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail
@@ -31,12 +31,12 @@ def getItem(tableName: String, primaryKeyName: String, primaryKeyValue: String, 
   val dynamoDbRequest = DynamoDbRequest(
     tableName,
     Map(primaryKeyName -> primaryKeyAttribute),
-    itemName
+    attributeName
   )
-  fs2Client.getItem(dynamoDbRequest)
+  zioClient.getAttributeValue(dynamoDbRequest)
 }
 
-def updateItem(tableName: String, primaryKeyName: String, primaryKeyValue: String, itemName: String, newItemValue: String): IO[Int] = {
+def updateAttributeValue(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String, newAttributeValue: String): IO[Int] = {
   val primaryKeyAttribute = AttributeValue
     .builder()
     .s(primaryKeyValue) // '.s' for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail
@@ -45,10 +45,10 @@ def updateItem(tableName: String, primaryKeyName: String, primaryKeyValue: Strin
   val dynamoDbRequest = DynamoDbRequest(
     tableName,
     Map(primaryKeyName -> primaryKeyAttribute),
-    itemName,
-    Some(AttributeValue.builder().s(newItemValue).build())
+    attributeName,
+    Some(AttributeValue.builder().s(newAttributeValue).build())
   )
-  fs2Client.updateItem(dynamoDbRequest)
+  zioClient.updateAttributeValue(dynamoDbRequest)
 }
 
 ```

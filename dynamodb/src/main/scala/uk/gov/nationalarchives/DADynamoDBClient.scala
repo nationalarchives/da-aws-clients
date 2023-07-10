@@ -21,14 +21,14 @@ import scala.language.postfixOps
   */
 class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
 
-  /** Gets an item from dynamoDB
+  /** Gets an attribute from dynamoDB
     * @param dynamoDbRequest
-    *   a case class with table name, primary key and value as well as the name of the item
+    *   a case class with table name, primary key and value as well as the name of the attribute
     * @return
-    *   The response from the get item call wrapped with F[_]
+    *   The response from the get attribute call wrapped with F[_]
     */
-  def getItem(dynamoDbRequest: DynamoDbRequest): F[AttributeValue] = {
-    val getItemRequest = GetItemRequest
+  def getAttributeValue(dynamoDbRequest: DynamoDbRequest): F[AttributeValue] = {
+    val getAttributeValueRequest = GetItemRequest
       .builder()
       .tableName(dynamoDbRequest.tableName)
       .key(dynamoDbRequest.primaryKeyAndItsValue asJava)
@@ -36,34 +36,34 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
 
     Async[F]
       .fromCompletableFuture {
-        Async[F].pure(dynamoDBClient.getItem(getItemRequest))
+        Async[F].pure(dynamoDBClient.getItem(getAttributeValueRequest))
       }
-      .map { getItemResponse =>
-        val attributeNamesAndValues: Map[String, AttributeValue] = (getItemResponse.item() asScala).toMap
-        attributeNamesAndValues(dynamoDbRequest.itemName)
+      .map { getAttributeValueResponse =>
+        val attributeNamesAndValues: Map[String, AttributeValue] = (getAttributeValueResponse.item() asScala).toMap
+        attributeNamesAndValues(dynamoDbRequest.attributeName)
       }
   }
 
-  /** Updates an item in DynamoDb
+  /** Updates an attribute in DynamoDb
     *
     * @param dynamoDbRequest
-    *   a case class with table name, primary key and value, the name of the item to update and the value you want to
+    *   a case class with table name, primary key and value, the name of the attribute to update and the value you want to
     *   update it with
     * @return
-    *   The http status code from the updateItem call wrapped with F[_]
+    *   The http status code from the updateAttributeValue call wrapped with F[_]
     */
-  def updateItem(dynamoDbRequest: DynamoDbRequest): F[Int] = {
-    val updateItemRequest = UpdateItemRequest
+  def updateAttributeValue(dynamoDbRequest: DynamoDbRequest): F[Int] = {
+    val updateAttributeValueRequest = UpdateItemRequest
       .builder()
       .tableName(dynamoDbRequest.tableName)
       .key(dynamoDbRequest.primaryKeyAndItsValue asJava)
       .attributeUpdates(
         Map(
-          dynamoDbRequest.itemName ->
+          dynamoDbRequest.attributeName ->
             AttributeValueUpdate
               .builder()
               .action(AttributeAction.PUT)
-              .value(dynamoDbRequest.itemValueToUpdate.get)
+              .value(dynamoDbRequest.attributeValueToUpdate.get)
               .build()
         ) asJava
       )
@@ -71,7 +71,7 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
 
     Async[F]
       .fromCompletableFuture {
-        Async[F].pure(dynamoDBClient.updateItem(updateItemRequest))
+        Async[F].pure(dynamoDBClient.updateItem(updateAttributeValueRequest))
       }
       .map(_.sdkHttpResponse().statusCode())
   }
@@ -86,8 +86,8 @@ object DADynamoDBClient {
   case class DynamoDbRequest(
       tableName: String,
       primaryKeyAndItsValue: Map[String, AttributeValue],
-      itemName: String,
-      itemValueToUpdate: Option[AttributeValue] = None
+      attributeName: String,
+      attributeValueToUpdate: Option[AttributeValue] = None
   )
 
   def apply[F[_]: Async]() = new DADynamoDBClient[F](dynamoDBClient)

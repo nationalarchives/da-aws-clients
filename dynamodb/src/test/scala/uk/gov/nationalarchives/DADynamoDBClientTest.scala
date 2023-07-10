@@ -17,11 +17,11 @@ import scala.language.postfixOps
 
 class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar {
 
-  "getItem" should "pass in the correct values to the GetItemRequest" in {
+  "getAttributeValue" should "pass in the correct values to the GetItemRequest" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val clientGetItemResponse = GetItemResponse
       .builder()
-      .item(Map("mockItem" -> AttributeValue.builder().s("mockItemValue").build()) asJava)
+      .item(Map("mockAttribute" -> AttributeValue.builder().s("mockAttributeValue").build()) asJava)
       .build()
     val clientGetItemResponseInCf = CompletableFuture.completedFuture(clientGetItemResponse)
     val getItemCaptor: ArgumentCaptor[GetItemRequest] = ArgumentCaptor.forClass(classOf[GetItemRequest])
@@ -36,21 +36,21 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar {
         Map(
           "mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()
         ),
-        "mockItem"
+        "mockAttribute"
       )
 
-    client.getItem(dynamoDbRequest).unsafeRunSync()
+    client.getAttributeValue(dynamoDbRequest).unsafeRunSync()
     val getItemCaptorValue = getItemCaptor.getValue
 
     getItemCaptorValue.tableName() should be("mockTableName")
     getItemCaptorValue.key().toString should be("""{mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue)}""")
   }
 
-  "getItem" should "return the correct value if itemName is valid" in {
+  "getAttributeValue" should "return the correct value if attributeName is valid" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val clientGetItemResponse = GetItemResponse
       .builder()
-      .item(Map("mockItem" -> AttributeValue.builder().s("mockItemValue").build()) asJava)
+      .item(Map("mockAttribute" -> AttributeValue.builder().s("mockAttributeValue").build()) asJava)
       .build()
     val clientGetItemResponseInCf = CompletableFuture.completedFuture(clientGetItemResponse)
 
@@ -64,18 +64,18 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar {
         Map(
           "mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()
         ),
-        "mockItem"
+        "mockAttribute"
       )
 
-    val getItemResponse = client.getItem(dynamoDbRequest).unsafeRunSync()
-    getItemResponse.s() should be("mockItemValue")
+    val getAttributeValueResponse = client.getAttributeValue(dynamoDbRequest).unsafeRunSync()
+    getAttributeValueResponse.s() should be("mockAttributeValue")
   }
 
-  "getItem" should "return an error if itemName is invalid" in {
+  "getAttributeValue" should "return an error if attributeName is invalid" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val clientGetItemResponse = GetItemResponse
       .builder()
-      .item(Map("mockItem" -> AttributeValue.builder().s("mockItemValue").build()) asJava)
+      .item(Map("mockAttribute" -> AttributeValue.builder().s("mockAttributeValue").build()) asJava)
       .build()
     val clientGetItemResponseInCf = CompletableFuture.completedFuture(clientGetItemResponse)
 
@@ -89,17 +89,17 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar {
         Map(
           "mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()
         ),
-        "incorrectMockItemName"
+        "incorrectMockAttributeName"
       )
     }
 
-    val getItemEx = intercept[Exception] {
-      client.getItem(dynamoDbRequest).unsafeRunSync()
+    val getAttributeValueEx = intercept[Exception] {
+      client.getAttributeValue(dynamoDbRequest).unsafeRunSync()
     }
-    getItemEx.getMessage should be("key not found: incorrectMockItemName")
+    getAttributeValueEx.getMessage should be("key not found: incorrectMockAttributeName")
   }
 
-  "getItem" should "return an error if the client does" in {
+  "getAttributeValue" should "return an error if the client does" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
 
     when(mockDynamoDbAsyncClient.getItem(any[GetItemRequest])).thenThrow(
@@ -114,16 +114,16 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar {
         Map(
           "mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()
         ),
-        "mockItem"
+        "mockAttribute"
       )
 
-    val getItemEx = intercept[Exception] {
-      client.getItem(dynamoDbRequest).unsafeRunSync()
+    val getAttributeValueEx = intercept[Exception] {
+      client.getAttributeValue(dynamoDbRequest).unsafeRunSync()
     }
-    getItemEx.getMessage should be("Table name could not be found")
+    getAttributeValueEx.getMessage should be("Table name could not be found")
   }
 
-  "updateItem" should "pass in the correct values to the UpdateItemRequest" in {
+  "updateAttributeValue" should "pass in the correct values to the UpdateItemRequest" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val sdkHttpResponse = SdkHttpResponse
       .builder()
@@ -147,18 +147,18 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar {
         Map(
           "mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()
         ),
-        "mockItem",
+        "mockAttribute",
         Some(AttributeValue.builder().s("newMockItemValue").build())
       )
 
-    client.updateItem(dynamoDbRequest).unsafeRunSync()
+    client.updateAttributeValue(dynamoDbRequest).unsafeRunSync()
     val updateItemCaptorValue = updateItemCaptor.getValue
 
     updateItemCaptorValue.tableName() should be("mockTableName")
     updateItemCaptorValue.key().toString should be("""{mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue)}""")
   }
 
-  "updateItem" should "return a 200 status code if the request is fine" in {
+  "updateAttributeValue" should "return a 200 status code if the request is fine" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val sdkHttpResponse = SdkHttpResponse
       .builder()
@@ -181,17 +181,17 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar {
         Map(
           "mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()
         ),
-        "mockItem",
+        "mockAttribute",
         Some(AttributeValue.builder().s("newMockItemValue").build())
       )
-    val updateItemResponseStatusCode = client.updateItem(dynamoDbRequest).unsafeRunSync()
+    val updateItemResponseStatusCode = client.updateAttributeValue(dynamoDbRequest).unsafeRunSync()
     updateItemResponseStatusCode should be(200)
   }
 
-  "updateItem" should "return an Exception if there is something wrong with the request/AWS" in {
+  "updateAttributeValue" should "return an Exception if there is something wrong with the request/AWS" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
 
-    when(mockDynamoDbAsyncClient.getItem(any[GetItemRequest])).thenThrow(
+    when(mockDynamoDbAsyncClient.updateItem(any[UpdateItemRequest])).thenThrow(
       ResourceNotFoundException.builder.message("Table name could not be found").build()
     )
 
@@ -203,12 +203,12 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar {
         Map(
           "mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()
         ),
-        "mockItem",
-        Some(AttributeValue.builder().s("newMockItemValue").build())
+        "mockAttribute",
+        Some(AttributeValue.builder().s("newMockAttributeValue").build())
       )
-    val getItemEx = intercept[Exception] {
-      client.getItem(dynamoDbRequest).unsafeRunSync()
+    val updateAttributeValueEx = intercept[Exception] {
+      client.updateAttributeValue(dynamoDbRequest).unsafeRunSync()
     }
-    getItemEx.getMessage should be("Table name could not be found")
+    updateAttributeValueEx.getMessage should be("Table name could not be found")
   }
 }
