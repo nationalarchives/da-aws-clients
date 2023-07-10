@@ -47,8 +47,8 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
   /** Updates an attribute in DynamoDb
     *
     * @param dynamoDbRequest
-    *   a case class with table name, primary key and value, the name of the attribute to update and the value you want to
-    *   update it with
+    *   a case class with table name, primary key and value, the name of the attribute to update and the value you want
+    *   to update it with
     * @return
     *   The http status code from the updateAttributeValue call wrapped with F[_]
     */
