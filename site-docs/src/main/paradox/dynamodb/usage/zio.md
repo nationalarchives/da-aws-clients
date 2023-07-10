@@ -22,7 +22,7 @@ import uk.gov.nationalarchives.DADynamoDBClient
 import uk.gov.nationalarchives.DADynamoDBClient.DynamoDbRequest
 
 val zioClient = DADynamoDBClient[Task]()
-def getAttributeValue(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String): IO[AttributeValue] = {
+def getAttributeValue(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String, attributeName2: String): IO[AttributeValue] = {
   val primaryKeyAttribute = AttributeValue
     .builder()
     .s(primaryKeyValue) // '.s' for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail
@@ -31,12 +31,13 @@ def getAttributeValue(tableName: String, primaryKeyName: String, primaryKeyValue
   val dynamoDbRequest = DynamoDbRequest(
     tableName,
     Map(primaryKeyName -> primaryKeyAttribute),
-    attributeName
+    Map("attributeName" -> None, "attributeName2" -> None)
   )
   zioClient.getAttributeValue(dynamoDbRequest)
 }
 
-def updateAttributeValue(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String, newAttributeValue: String): IO[Int] = {
+def updateAttributeValue(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String,
+                         attributeName2: String, newAttributeValue: String, newAttributeValue2: String): IO[Int] = {
   val primaryKeyAttribute = AttributeValue
     .builder()
     .s(primaryKeyValue) // '.s' for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail
@@ -45,8 +46,10 @@ def updateAttributeValue(tableName: String, primaryKeyName: String, primaryKeyVa
   val dynamoDbRequest = DynamoDbRequest(
     tableName,
     Map(primaryKeyName -> primaryKeyAttribute),
-    attributeName,
-    Some(AttributeValue.builder().s(newAttributeValue).build())
+    Map(
+      attributeName -> Some(AttributeValue.builder().s(newAttributeValue).build()),
+      attributeName2 -> Some(AttributeValue.builder().s(newAttributeValue2).build())
+    )
   )
   zioClient.updateAttributeValue(dynamoDbRequest)
 }
