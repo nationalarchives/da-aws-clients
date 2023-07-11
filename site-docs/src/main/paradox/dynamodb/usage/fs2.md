@@ -17,7 +17,7 @@ import uk.gov.nationalarchives.DADynamoDBClient.DynamoDbRequest
 
 val fs2Client = DADynamoDBClient[IO]()
 
-def getAttributeValues(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String, attributeName2: String): IO[AttributeValue] = {
+def getAttributeValuesSetUpExample(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String, attributeName2: String): IO[AttributeValue] = {
   val primaryKeyAttribute = AttributeValue
     .builder()
     .s(primaryKeyValue) // '.s' for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail
@@ -28,10 +28,10 @@ def getAttributeValues(tableName: String, primaryKeyName: String, primaryKeyValu
     Map(primaryKeyName -> primaryKeyAttribute),
     Map(attributeName -> None, attributeName2 -> None)
   )
-  fs2Client.getAttributeValue(dynamoDbRequest)
+  fs2Client.getAttributeValues(dynamoDbRequest)
 }
 
-def updateAttributeValues(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String,
+def updateAttributeValuesSetUpExample(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String,
                           attributeName2: String, newAttributeValue: String, newAttributeValue2: String): IO[Int] = {
   val primaryKeyAttribute = AttributeValue
     .builder()
@@ -46,6 +46,6 @@ def updateAttributeValues(tableName: String, primaryKeyName: String, primaryKeyV
       attributeName2 -> Some(AttributeValue.builder().s(newAttributeValue2).build())
     )
   )
-  fs2Client.updateAttributeValue(dynamoDbRequest)
+  fs2Client.updateAttributeValues(dynamoDbRequest)
 }
 ```
