@@ -12,7 +12,7 @@ val clientWithDefault = DADynamoDBClient()
 The client exposes two methods:
 
 ```scala
-def getAttributeValues(dynamoDbRequest: DynamoDbRequest): F[AttributeValue]
+def getAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Map[String, AttributeValue]]
 
 def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int]
 ```
