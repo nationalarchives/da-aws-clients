@@ -36,6 +36,7 @@ class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient) {
     * @return
     *   The response from the send message call wrapped with F[_]
     */
+
   def publish[T <: Product](
       topicArn: String
   )(messages: List[T])(implicit enc: Encoder[T]): F[List[PublishBatchResponse]] = {
@@ -57,6 +58,7 @@ class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient) {
           .build()
       Async[F].fromCompletableFuture(Async[F].pure(snsAsyncClient.publishBatch(batchMessageRequest)))
     }.sequence
+
   }
 }
 

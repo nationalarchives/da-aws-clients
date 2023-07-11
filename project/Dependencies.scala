@@ -9,6 +9,7 @@ object Dependencies {
   lazy val catsEffect = "org.typelevel" %% "cats-effect" % "3.5.0"
   lazy val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
   lazy val circe = "io.circe" %% "circe-core" % circeVersion
+  lazy val dynamoDB = "software.amazon.awssdk" % "dynamodb" % awsSdkVersion
   lazy val mockito = "org.mockito" %% "mockito-scala" % "1.17.12"
   lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.5.6"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion

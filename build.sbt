@@ -8,7 +8,8 @@ lazy val root = (project in file("."))
     name := "da-aws-client",
     publish / skip := true
   ).settings(commonSettings)
-  .aggregate(sqs, sns, s3)
+  .aggregate(sqs, sns, s3, dynamoDb)
+
 
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
@@ -58,6 +59,15 @@ lazy val commonSettings = Seq(
     setNextVersion,
     commitNextVersion,
     pushChanges
+  )
+)
+
+lazy val dynamoDb = (project in file("dynamodb"))
+  .settings(commonSettings).settings(
+  name:= "da-dynamodb-client",
+  description := "A project containing useful methods for interacting with DynamoDb",
+  libraryDependencies ++= Seq(
+    dynamoDB
   )
 )
 
