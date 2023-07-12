@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.sns.SnsAsyncClient
 import software.amazon.awssdk.services.sns.model.{PublishBatchRequest, PublishBatchRequestEntry, PublishBatchResponse}
 
 import java.util
+import java.util.UUID
 import scala.jdk.CollectionConverters.SeqHasAsJava
 
 /** An SNS client. It is written generically so can be used for any effect which has an Async instance. Requires an
@@ -47,6 +48,7 @@ class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient) {
         val messageAsJson: String = message.asJson.printWith(Printer.noSpaces)
         PublishBatchRequestEntry
           .builder()
+          .id(UUID.randomUUID().toString)
           .message(messageAsJson)
           .build()
       }.asJava
