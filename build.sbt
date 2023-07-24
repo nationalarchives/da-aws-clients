@@ -5,7 +5,7 @@ ThisBuild / scalaVersion     := "2.13.10"
 
 lazy val root = (project in file("."))
   .settings(
-    name := "da-aws-client",
+    name := "da-aws-clients",
     publish / skip := true
   ).settings(commonSettings)
   .aggregate(sqs, sns, s3, dynamoDb)
@@ -26,7 +26,7 @@ lazy val commonSettings = Seq(
 
   scmInfo := Some(
     ScmInfo(
-      url("https://github.com/nationalarchives/da-aws-client"),
+      url("https://github.com/nationalarchives/da-aws-clients"),
       "git@github.com:nationalarchives/da-aws-client"
     )
   ),
@@ -35,12 +35,12 @@ lazy val commonSettings = Seq(
       id = "tna-digital-archiving-jenkins",
       name = "TNA Digital Archiving",
       email = "digitalpreservation@nationalarchives.gov.uk",
-      url = url("https://github.com/nationalarchives/da-aws-client")
+      url = url("https://github.com/nationalarchives/da-aws-clients")
     )
   ),
 
   licenses := List("MIT" -> new URL("https://choosealicense.com/licenses/mit/")),
-  homepage := Some(url("https://github.com/nationalarchives/da-aws-client")),
+  homepage := Some(url("https://github.com/nationalarchives/da-aws-clients")),
 
   useGpgPinentry := true,
   publishTo := sonatypePublishToBundle.value,
