@@ -7,10 +7,24 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.core.async.{AsyncRequestBody, AsyncResponseTransformer}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model.{ChecksumAlgorithm, CopyObjectRequest, CopyObjectResponse, GetObjectRequest, GetObjectResponse, PutObjectRequest}
+import software.amazon.awssdk.services.s3.model.{
+  ChecksumAlgorithm,
+  CopyObjectRequest,
+  CopyObjectResponse,
+  GetObjectRequest,
+  GetObjectResponse,
+  PutObjectRequest
+}
 import software.amazon.awssdk.transfer.s3.S3TransferManager
-import software.amazon.awssdk.transfer.s3.model.{CompletedUpload, DownloadRequest, Upload, UploadRequest}
-import uk.gov.nationalarchives.DAS3Client.asyncClient
+import software.amazon.awssdk.transfer.s3.model.{
+  CompletedCopy,
+  CompletedUpload,
+  Copy,
+  CopyRequest,
+  DownloadRequest,
+  Upload,
+  UploadRequest
+}
 
 import java.nio.ByteBuffer
 
@@ -22,26 +36,36 @@ import java.nio.ByteBuffer
   * @tparam F
   *   Type of the effect
   */
-class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S3AsyncClient) {
+class DAS3Client[F[_]: Async](transferManager: S3TransferManager) {
 
-  /**
-   * Copies an S3 object to a destination bucket and key
-   * @param sourceBucket The bucket to copy from
-   * @param sourceKey The key to copy from
-   * @param destinationBucket The bucket to copy to
-   * @param destinationKey The key to copy to
-   * @return A CopyObjectResponse wrapped in the F effect
-   */
-  def copy(sourceBucket: String, sourceKey: String, destinationBucket: String, destinationKey: String): F[CopyObjectResponse] = {
-    val copyObjectRequest = CopyObjectRequest.builder
+  /** Copies an S3 object to a destination bucket and key
+    * @param sourceBucket
+    *   The bucket to copy from
+    * @param sourceKey
+    *   The key to copy from
+    * @param destinationBucket
+    *   The bucket to copy to
+    * @param destinationKey
+    *   The key to copy to
+    * @return
+    *   A CopyObjectResponse wrapped in the F effect
+    */
+  def copy(
+      sourceBucket: String,
+      sourceKey: String,
+      destinationBucket: String,
+      destinationKey: String
+  ): F[CompletedCopy] = {
+    val copyObjectRequest: CopyObjectRequest = CopyObjectRequest.builder
       .sourceBucket(sourceBucket)
       .sourceKey(sourceKey)
       .destinationBucket(destinationBucket)
       .destinationKey(destinationKey)
       .build()
+    val copyRequest: CopyRequest = CopyRequest.builder.copyObjectRequest(copyObjectRequest).build
     Async[F]
       .fromCompletableFuture {
-        Async[F].pure(asyncClient.copyObject(copyObjectRequest))
+        Async[F].pure(transferManager.copy(copyRequest).completionFuture())
       }
   }
 
@@ -108,12 +132,12 @@ object DAS3Client {
     .s3Client(asyncClient)
     .build()
 
-  def apply[F[_]: Async](): DAS3Client[F] = new DAS3Client[F](transferManager, asyncClient)
+  def apply[F[_]: Async](): DAS3Client[F] = new DAS3Client[F](transferManager)
   def apply[F[_]: Async](asyncClient: S3AsyncClient): DAS3Client[F] = {
     val transferManager: S3TransferManager = S3TransferManager
       .builder()
       .s3Client(asyncClient)
       .build()
-    new DAS3Client[F](transferManager, asyncClient)
+    new DAS3Client[F](transferManager)
   }
 }
