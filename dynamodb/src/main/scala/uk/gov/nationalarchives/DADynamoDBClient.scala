@@ -3,6 +3,8 @@ package uk.gov.nationalarchives
 import cats.effect.Async
 import cats.implicits._
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
+import software.amazon.awssdk.http.async.SdkAsyncHttpClient
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
@@ -82,8 +84,10 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
   }
 }
 object DADynamoDBClient {
+  private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   private val dynamoDBClient: DynamoDbAsyncClient = DynamoDbAsyncClient
     .builder()
+    .httpClient(httpClient)
     .region(Region.EU_WEST_2)
     .credentialsProvider(DefaultCredentialsProvider.create())
     .build()
