@@ -13,9 +13,9 @@ import software.amazon.awssdk.services.sfn.model.{StartExecutionRequest, StartEx
 import java.util.concurrent.CompletableFuture
 
 class DASFNClientTest extends AnyFlatSpec with MockitoSugar {
-  case class Test(message: String, value: String)
+  case class TestInput(message: String, value: String)
 
-  implicit val enc: Encoder[Test] = Encoder.forProduct2("message", "value")(t => (t.message, t.value))
+  implicit val enc: Encoder[TestInput] = Encoder.forProduct2("message", "value")(t => (t.message, t.value))
   val arn = "arn:aws:states:eu-west-2:123456789:stateMachine:TestStateMachine"
 
   "startExecution" should "start an execution with the correct parameters when no name is provided" in {
@@ -26,7 +26,7 @@ class DASFNClientTest extends AnyFlatSpec with MockitoSugar {
     when(sfnAsyncClient.startExecution(startExecutionRequestCaptor.capture())).thenReturn(mockResponse)
 
     val client = new DASFNClient[IO](sfnAsyncClient)
-    client.startExecution(arn, Test("testMessage", "testValue")).unsafeRunSync()
+    client.startExecution(arn, TestInput("testMessage", "testValue")).unsafeRunSync()
 
     val request = startExecutionRequestCaptor.getValue
     Option(request.name).isDefined should be(false)
@@ -43,7 +43,7 @@ class DASFNClientTest extends AnyFlatSpec with MockitoSugar {
 
     val client = new DASFNClient[IO](sfnAsyncClient)
 
-    client.startExecution(arn, Test("testMessage", "testValue"), Option("testName")).unsafeRunSync()
+    client.startExecution(arn, TestInput("testMessage", "testValue"), Option("testName")).unsafeRunSync()
 
     val request = startExecutionRequestCaptor.getValue
     request.name should be("testName")
@@ -58,7 +58,7 @@ class DASFNClientTest extends AnyFlatSpec with MockitoSugar {
     val client = new DASFNClient[IO](sfnAsyncClient)
 
     val ex = intercept[Exception] {
-      client.startExecution(arn, Test("testMessage", "testValue"), Option("testName")).unsafeRunSync()
+      client.startExecution(arn, TestInput("testMessage", "testValue"), Option("testName")).unsafeRunSync()
     }
     ex.getMessage should equal("Error starting execution")
   }

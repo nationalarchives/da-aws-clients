@@ -14,15 +14,7 @@ import software.amazon.awssdk.services.s3.model.{CopyObjectResponse, GetObjectRe
 import software.amazon.awssdk.transfer.s3.S3TransferManager
 import software.amazon.awssdk.transfer.s3.internal.model.{DefaultCopy, DefaultDownload, DefaultUpload}
 import software.amazon.awssdk.transfer.s3.internal.progress.{DefaultTransferProgress, DefaultTransferProgressSnapshot}
-import software.amazon.awssdk.transfer.s3.model.{
-  CompletedCopy,
-  CompletedDownload,
-  CompletedUpload,
-  Copy,
-  CopyRequest,
-  DownloadRequest,
-  UploadRequest
-}
+import software.amazon.awssdk.transfer.s3.model._
 
 import java.nio.ByteBuffer
 import java.util.Optional
@@ -110,7 +102,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     ex.getMessage should equal("Error uploading")
   }
 
-  "copy" should "return the correct copy completed response" in {
+  "copy" should "return the correct 'copy completed' response" in {
     val transferManagerMock = mock[S3TransferManager]
     val copyCompletedResponse = createCopyCompletedResponse()
     when(transferManagerMock.copy(any[CopyRequest])).thenReturn(copyCompletedResponse)

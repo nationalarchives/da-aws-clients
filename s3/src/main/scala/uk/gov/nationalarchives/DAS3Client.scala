@@ -7,24 +7,9 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.core.async.{AsyncRequestBody, AsyncResponseTransformer}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model.{
-  ChecksumAlgorithm,
-  CopyObjectRequest,
-  CopyObjectResponse,
-  GetObjectRequest,
-  GetObjectResponse,
-  PutObjectRequest
-}
+import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.transfer.s3.S3TransferManager
-import software.amazon.awssdk.transfer.s3.model.{
-  CompletedCopy,
-  CompletedUpload,
-  Copy,
-  CopyRequest,
-  DownloadRequest,
-  Upload,
-  UploadRequest
-}
+import software.amazon.awssdk.transfer.s3.model._
 
 import java.nio.ByteBuffer
 

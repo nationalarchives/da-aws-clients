@@ -24,7 +24,7 @@ class DASFNClient[F[_]: Async](sfnAsyncClient: SfnAsyncClient) {
     * @param input
     *   A case class. This will be deserialised to a json string and sent as input to the step function.
     * @param name
-    *   An optional name. If this is omitted, AWS will generate a UUID for a name.
+    *   An optional step function name. If this is omitted, AWS will generate a UUID for a name.
     * @param enc
     *   A circe encoder which will encode the case class to JSON
     * @tparam T
