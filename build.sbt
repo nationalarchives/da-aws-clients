@@ -8,7 +8,7 @@ lazy val root = (project in file("."))
     name := "da-aws-clients",
     publish / skip := true
   ).settings(commonSettings)
-  .aggregate(sqs, sns, s3, dynamoDb)
+  .aggregate(sqs, sns, s3, dynamoDb, sfn)
 
 
 lazy val commonSettings = Seq(
@@ -100,6 +100,15 @@ lazy val sns = (project in file("sns"))
     snsSdk
   )
 )
+
+lazy val sfn = (project in file("sfn"))
+  .settings(commonSettings).settings(
+    name := "da-sfn-client",
+    description := "A project containing useful methods for interacting with step functions",
+    libraryDependencies ++= Seq(
+      sfnSdk
+    )
+  )
 
 lazy val docs = (project in file("site-docs"))
   .settings(

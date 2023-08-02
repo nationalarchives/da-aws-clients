@@ -10,11 +10,11 @@ import reactor.test.StepVerifier
 import software.amazon.awssdk.core.SdkResponse
 import software.amazon.awssdk.core.async.ResponsePublisher
 import software.amazon.awssdk.core.internal.async.ByteArrayAsyncRequestBody
-import software.amazon.awssdk.services.s3.model.{GetObjectResponse, PutObjectResponse}
+import software.amazon.awssdk.services.s3.model.{CopyObjectResponse, GetObjectResponse, PutObjectResponse}
 import software.amazon.awssdk.transfer.s3.S3TransferManager
-import software.amazon.awssdk.transfer.s3.internal.model.{DefaultDownload, DefaultUpload}
+import software.amazon.awssdk.transfer.s3.internal.model.{DefaultCopy, DefaultDownload, DefaultUpload}
 import software.amazon.awssdk.transfer.s3.internal.progress.{DefaultTransferProgress, DefaultTransferProgressSnapshot}
-import software.amazon.awssdk.transfer.s3.model.{CompletedDownload, CompletedUpload, DownloadRequest, UploadRequest}
+import software.amazon.awssdk.transfer.s3.model._
 
 import java.nio.ByteBuffer
 import java.util.Optional
@@ -100,6 +100,50 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
       client.upload("bucket", "key", 1, publisher).unsafeRunSync()
     }
     ex.getMessage should equal("Error uploading")
+  }
+
+  "copy" should "return the correct 'copy completed' response" in {
+    val transferManagerMock = mock[S3TransferManager]
+    val copyCompletedResponse = createCopyCompletedResponse()
+    when(transferManagerMock.copy(any[CopyRequest])).thenReturn(copyCompletedResponse)
+
+    val client = new DAS3Client[IO](transferManagerMock)
+    val response = client.copy("sourceBucket", "sourceKey", "destinationBucket", "destinationKey").unsafeRunSync()
+    response.response().versionId() should equal("version")
+  }
+
+  "copy" should "call transfer manager copy with the correct arguments" in {
+    val transferManagerMock = mock[S3TransferManager]
+    val copyCaptor: ArgumentCaptor[CopyRequest] = ArgumentCaptor.forClass(classOf[CopyRequest])
+    val copyCompletedResponse = createCopyCompletedResponse()
+    when(transferManagerMock.copy(copyCaptor.capture())).thenReturn(copyCompletedResponse)
+
+    val client = new DAS3Client[IO](transferManagerMock)
+    client.copy("sourceBucket", "sourceKey", "destinationBucket", "destinationKey").unsafeRunSync()
+
+    val requestBody = copyCaptor.getValue.copyObjectRequest()
+    requestBody.sourceBucket() should equal("sourceBucket")
+    requestBody.sourceKey() should equal("sourceKey")
+    requestBody.destinationBucket() should equal("destinationBucket")
+    requestBody.destinationKey() should equal("destinationKey")
+
+  }
+
+  "copy" should "return an error if the transfer manager returns an error" in {
+    val transferManagerMock = mock[S3TransferManager]
+    when(transferManagerMock.copy(any[CopyRequest])).thenThrow(new Exception("Error copying"))
+
+    val client = new DAS3Client[IO](transferManagerMock)
+    val ex = intercept[Exception] {
+      client.copy("sourceBucket", "sourceKey", "destinationBucket", "destinationKey").unsafeRunSync()
+    }
+    ex.getMessage should equal("Error copying")
+  }
+
+  private def createCopyCompletedResponse(): Copy = {
+    val copyObjectResponse = CopyObjectResponse.builder.versionId("version").build
+    val completedCopy = CompletedCopy.builder.response(copyObjectResponse).build
+    new DefaultCopy(CompletableFuture.completedFuture(completedCopy), getTransferProgress(copyObjectResponse, 1))
   }
 
   private def createUploadResponse(): DefaultUpload = {
