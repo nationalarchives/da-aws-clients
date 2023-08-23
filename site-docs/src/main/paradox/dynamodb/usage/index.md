@@ -16,7 +16,7 @@ def getItems[T <: Product, K <: Product](keys: List[K], tableName: String)(impli
 
 def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int]
 
-def putItems[T <: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
+def writeItems[T <: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
 ```
 
 The `updateAttributeValues` method takes a dynamoDbRequest Case Class:
@@ -39,8 +39,8 @@ The `getItems` method takes a table name and a list of case classes of type `K`
 
 The case class for the primary key should match the primary key of the dynamo table. 
 
-If the table has a primary key of id of type string, the case class would be `PrimaryKey(id: String)`
-If there is a composite key of id of type String and index of type number, the case class would be `PrimaryKey(id: String, index: Long)`
+If, for example, the table has a primary key called "id", of type String, the case class would be `PrimaryKey(id: String)`
+If, for example, there is a composite key of "id", of type String and "index" of type number, the case class would be `PrimaryKey(id: String, index: Long)`
 
 The method will return a list of items of type `T`
 

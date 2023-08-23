@@ -22,22 +22,22 @@ import scala.language.postfixOps
 class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrivenPropertyChecks {
   case class Pk(mockPrimaryKeyName: String)
   trait MockResponse extends Product
-  case class MockNestedResponse(mockSingleAttributeResponse: MockSingleAttributeResponse)
-  case class MockTwoAttributesResponse(mockAttribute: String, mockAttribute2: String) extends MockResponse
-  case class MockSingleAttributeResponse(mockAttribute: String) extends MockResponse
+  case class MockNestedRequest(mockSingleAttributeResponse: MockSingleAttributeRequest)
+  case class MockTwoAttributesRequest(mockAttribute: String, mockAttribute2: String) extends MockResponse
+  case class MockSingleAttributeRequest(mockAttribute: String) extends MockResponse
 
   val primaryKeysTable: TableFor2[List[Pk], FieldName] = Table(
-    ("keys", "expectedResponse"),
+    ("keys", "expectedAttributeNamesAndValues"),
     (List(Pk("mockPrimaryKeyValue1")), "[{mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue1)}]"),
     (
       List(Pk("mockPrimaryKeyValue1"), Pk("mockPrimaryKeyValue2")),
       "[{mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue1)}, {mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue2)}]"
     )
   )
-  forAll(primaryKeysTable) { (keys, expectedResponse) =>
-    "getAttributeValues" should s"pass in $expectedResponse to the BatchGetItemRequest" in {
+  forAll(primaryKeysTable) { (keys, expectedAttributeNamesAndValues) =>
+    "getItems" should s"pass in the correct table name and $expectedAttributeNamesAndValues to the BatchGetItemRequest" in {
       val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
-      val response = Map("mockAttribute" -> AttributeValue.builder().s("mockAttributeValue").build()) asJava
+      val response = Map("mockAttribute" -> AttributeValue.builder().s("mockAttributeValue").build()).asJava
       val responses = Map("mockTableName" -> util.Arrays.asList(response)).asJava
       val clientBatchGetItemResponse = BatchGetItemResponse
         .builder()
@@ -51,7 +51,7 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
 
       val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
-      val result = client.getItems[MockSingleAttributeResponse, Pk](keys, "mockTableName").unsafeRunSync()
+      val result = client.getItems[MockSingleAttributeRequest, Pk](keys, "mockTableName").unsafeRunSync()
 
       result.size should equal(1)
       result.head.mockAttribute should equal("mockAttributeValue")
@@ -61,11 +61,11 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
       requestItems.size() should equal(1)
       val tableName = requestItems.keySet().asScala.head
       tableName should equal("mockTableName")
-      requestItems.get(tableName).keys().toString should equal(expectedResponse)
+      requestItems.get(tableName).keys().toString should equal(expectedAttributeNamesAndValues)
     }
   }
 
-  "getAttributeValues" should "return the correct value if attributeName is valid" in {
+  "getItems" should "return the correct value if attributeName is valid" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val responses = Map(
       "mockTableName" -> util.Arrays.asList(
@@ -85,15 +85,15 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
 
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
-    val getAttributeValueResponse: List[MockTwoAttributesResponse] =
-      client.getItems[MockTwoAttributesResponse, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
+    val getAttributeValueResponse: List[MockTwoAttributesRequest] =
+      client.getItems[MockTwoAttributesRequest, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
 
     getAttributeValueResponse.size should equal(1)
     getAttributeValueResponse.head.mockAttribute should equal("mockAttributeValue")
     getAttributeValueResponse.head.mockAttribute2 should equal("mockAttributeValue2")
   }
 
-  "getAttributeValues" should "return an empty string if the dynamo doesn't return an value for an attribute" in {
+  "getItems" should "return an empty string if the dynamo doesn't return an value for an attribute" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val responses = Map(
       "mockTableName" -> util.Arrays.asList(
@@ -113,13 +113,38 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
 
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
-    val getAttributeValueResponse: List[MockTwoAttributesResponse] =
-      client.getItems[MockTwoAttributesResponse, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
+    val getAttributeValueResponse: List[MockTwoAttributesRequest] =
+      client.getItems[MockTwoAttributesRequest, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
 
     getAttributeValueResponse.head.mockAttribute2 should equal("")
   }
 
-  "getAttributeValues" should "return an error if there are nested field values missing" in {
+  "getItems" should "return an error if the value is of an unexpected type" in {
+    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+    val responses = Map(
+      "mockTableName" -> util.Arrays.asList(
+        Map(
+          "mockAttribute" -> AttributeValue.builder().n("1").build()
+        ) asJava
+      )
+    ).asJava
+    val clientBatchGetItemResponse = BatchGetItemResponse
+      .builder()
+      .responses(responses)
+      .build()
+    val clientGetItemResponseInCf = CompletableFuture.completedFuture(clientBatchGetItemResponse)
+
+    when(mockDynamoDbAsyncClient.batchGetItem(any[BatchGetItemRequest])).thenReturn(clientGetItemResponseInCf)
+
+    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+
+    val ex = intercept[Exception] {
+      client.getItems[MockSingleAttributeRequest, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
+    }
+    ex.getMessage should equal("'mockAttribute': not of type: 'S' was 'DynNum(1)'")
+  }
+
+  "getItems" should "return an error if there are nested field values missing" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val responses = Map(
       "mockTableName" -> util.Arrays.asList(
@@ -139,12 +164,12 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val ex = intercept[Exception] {
-      client.getItems[MockNestedResponse, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
+      client.getItems[MockNestedRequest, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
     }
-    ex.getMessage should equal("The following properties are invalid mockSingleAttributeResponse")
+    ex.getMessage should equal("'mockSingleAttributeResponse': missing")
   }
 
-  "getAttributeValues" should "return an error if the client does" in {
+  "getItems" should "return an error if the client does" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
 
     when(mockDynamoDbAsyncClient.batchGetItem(any[BatchGetItemRequest])).thenThrow(
@@ -154,7 +179,7 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val getAttributeValueEx = intercept[Exception] {
-      client.getItems[MockSingleAttributeResponse, Pk](List(Pk("id")), "table").unsafeRunSync()
+      client.getItems[MockSingleAttributeRequest, Pk](List(Pk("id")), "table").unsafeRunSync()
     }
     getAttributeValueEx.getMessage should be("Table name could not be found")
   }
@@ -243,12 +268,12 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
   }
 
   implicit val productFormat: Typeclass[MockResponse] = new Typeclass[MockResponse] {
-    override def read(av: DynamoValue): Either[DynamoReadError, MockResponse] = Right(MockSingleAttributeResponse(""))
+    override def read(av: DynamoValue): Either[DynamoReadError, MockResponse] = Right(MockSingleAttributeRequest(""))
 
     override def write(t: MockResponse): DynamoValue = t match {
-      case MockSingleAttributeResponse(mockAttribute) =>
+      case MockSingleAttributeRequest(mockAttribute) =>
         DynamoValue.fromMap(Map("mockAttribute" -> DynamoValue.fromString(mockAttribute)))
-      case MockTwoAttributesResponse(mockAttribute, mockAttribute2) =>
+      case MockTwoAttributesRequest(mockAttribute, mockAttribute2) =>
         DynamoValue.fromMap(
           Map(
             "mockAttribute" -> DynamoValue.fromString(mockAttribute),
@@ -258,28 +283,28 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
     }
   }
 
-  val putItemsTable: TableFor2[List[MockResponse], FieldName] = Table(
-    ("input", "expectedResponse"),
-    (List(MockSingleAttributeResponse("mockValue")), "{mockAttribute=AttributeValue(S=mockValue)}"),
+  val writeItemsTable: TableFor2[List[MockResponse], FieldName] = Table(
+    ("input", "expectedAttributeNamesAndValues"),
+    (List(MockSingleAttributeRequest("mockValue")), "{mockAttribute=AttributeValue(S=mockValue)}"),
     (
-      List(MockSingleAttributeResponse("mockValue1"), MockSingleAttributeResponse("mockValue2")),
+      List(MockSingleAttributeRequest("mockValue1"), MockSingleAttributeRequest("mockValue2")),
       "{mockAttribute=AttributeValue(S=mockValue1)} {mockAttribute=AttributeValue(S=mockValue2)}"
     ),
     (
-      List(MockTwoAttributesResponse("mockValue1", "mockValue2")),
+      List(MockTwoAttributesRequest("mockValue1", "mockValue2")),
       "{mockAttribute=AttributeValue(S=mockValue1), mockAttribute2=AttributeValue(S=mockValue2)}"
     ),
     (
       List(
-        MockTwoAttributesResponse("mockValue1", "mockValue2"),
-        MockTwoAttributesResponse("mockValue3", "mockValue4")
+        MockTwoAttributesRequest("mockValue1", "mockValue2"),
+        MockTwoAttributesRequest("mockValue3", "mockValue4")
       ),
       "{mockAttribute=AttributeValue(S=mockValue1), mockAttribute2=AttributeValue(S=mockValue2)} {mockAttribute=AttributeValue(S=mockValue3), mockAttribute2=AttributeValue(S=mockValue4)}"
     )
   )
 
-  forAll(putItemsTable) { (input, expectedResponse) =>
-    "putItems" should s"send $expectedResponse to Dynamo" in {
+  forAll(writeItemsTable) { (input, expectedAttributeNamesAndValues) =>
+    "writeItems" should s"send the correct table name and $expectedAttributeNamesAndValues to the BatchWriteItemRequest" in {
       val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
       val sdkHttpResponse = SdkHttpResponse
         .builder()
@@ -287,36 +312,36 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
         .build()
       val writeItemResponse = BatchWriteItemResponse.builder
       writeItemResponse.sdkHttpResponse(sdkHttpResponse)
-      val putCaptor: ArgumentCaptor[BatchWriteItemRequest] = ArgumentCaptor.forClass(classOf[BatchWriteItemRequest])
+      val writeCaptor: ArgumentCaptor[BatchWriteItemRequest] = ArgumentCaptor.forClass(classOf[BatchWriteItemRequest])
 
-      when(mockDynamoDbAsyncClient.batchWriteItem(putCaptor.capture()))
+      when(mockDynamoDbAsyncClient.batchWriteItem(writeCaptor.capture()))
         .thenReturn(CompletableFuture.completedFuture(writeItemResponse.build()))
       val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
-      val response = client.putItems("table", input).unsafeRunSync()
+      val response = client.writeItems("table", input).unsafeRunSync()
 
       response.sdkHttpResponse().statusCode() should equal(200)
 
-      putCaptor.getAllValues.size should equal(1)
-      val value = putCaptor.getAllValues.asScala.head
-      val keySet = value.requestItems().keySet().asScala
-      keySet.size should equal(1)
-      keySet.head should equal("table")
-      val writeValues = value.requestItems().get(keySet.head).asScala
-      writeValues.size should equal(input.length)
-      val items = writeValues.map(_.putRequest().item().toString).mkString(" ")
+      writeCaptor.getAllValues.size should equal(1)
+      val batchWriteItemRequest = writeCaptor.getAllValues.asScala.head
+      val batchGetItemRequestKeys = batchWriteItemRequest.requestItems().keySet().asScala
+      batchGetItemRequestKeys.size should equal(1)
+      batchGetItemRequestKeys.head should equal("table")
+      val batchGetItemRequestValuesToWrite = batchWriteItemRequest.requestItems().get(batchGetItemRequestKeys.head).asScala
+      batchGetItemRequestValuesToWrite.size should equal(input.length)
+      val attributeNameAndValues = batchGetItemRequestValuesToWrite.map(_.putRequest().item().toString).mkString(" ")
 
-      items should equal(expectedResponse)
+      attributeNameAndValues should equal(expectedAttributeNamesAndValues)
     }
   }
 
-  "putItems" should "return an error if the dynamo client returns an error" in {
+  "writeItems" should "return an error if the dynamo client returns an error" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     when(mockDynamoDbAsyncClient.batchWriteItem(any[BatchWriteItemRequest]))
       .thenThrow(new Exception("Error writing to dynamo"))
 
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
     val ex = intercept[Exception] {
-      client.putItems("table", List(MockSingleAttributeResponse("mockValue"))).unsafeRunSync()
+      client.writeItems("table", List(MockSingleAttributeRequest("mockValue"))).unsafeRunSync()
     }
     ex.getMessage should equal("Error writing to dynamo")
   }

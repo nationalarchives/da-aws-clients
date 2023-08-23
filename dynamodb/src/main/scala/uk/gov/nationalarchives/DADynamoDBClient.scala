@@ -2,6 +2,7 @@ package uk.gov.nationalarchives
 
 import cats.effect.Async
 import cats.implicits._
+import org.scanamo.DynamoReadError._
 import org.scanamo._
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient
@@ -36,26 +37,25 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
     * @return
     *   The BatchWriteItemResponse wrapped with F[_]
     */
-  def putItems[T <: Product](tableName: String, items: List[T])(implicit
+  def writeItems[T <: Product](tableName: String, items: List[T])(implicit
       format: DynamoFormat[T]
   ): F[BatchWriteItemResponse] = {
-    val values: List[WriteRequest] = items
+    val valuesToWrite: List[WriteRequest] = items
       .map(format.write)
       .map(_.toAttributeValue.m())
-      .map(itemMap => {
-        val pir = PutRequest.builder().item(itemMap).build
-        WriteRequest.builder().putRequest(pir).build
-      })
-
-    val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> values.asJava).asJava).build()
+      .map { itemMap =>
+        val putRequest = PutRequest.builder().item(itemMap).build
+        WriteRequest.builder().putRequest(putRequest).build
+      }
+    val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> valuesToWrite.asJava).asJava).build()
     Async[F]
       .fromCompletableFuture {
         Async[F].pure(dynamoDBClient.batchWriteItem(req))
       }
   }
 
-  private def processBatchResponse[T](batchGetItemResponse: BatchGetItemResponse, tableName: String)(implicit
-      format: DynamoFormat[T]
+  private def validateAndConvertBatchGetItemResponse[T](batchGetItemResponse: BatchGetItemResponse, tableName: String)(
+      implicit format: DynamoFormat[T]
   ): F[List[T]] = {
     batchGetItemResponse.responses.get(tableName).asScala.toList.map { res =>
       DynamoValue.fromMap {
@@ -64,19 +64,12 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
         }
       }
     } map { dynamoValue =>
-      format.read(dynamoValue).left.map {
-        case NoPropertyOfType(propertyType, actual) =>
-          new Exception(s"No property of type $propertyType for value ${actual.toAttributeValue}")
-        case TypeCoercionError(t) => t
-        case MissingProperty      => new Exception("There is an unknown missing property")
-        case InvalidPropertiesError(errors) =>
-          new Exception(s"The following properties are invalid ${errors.map(_._1).toList.mkString}")
-      }
+      format.read(dynamoValue).left.map(err => new Exception(err.show))
     } map Async[F].fromEither
   }.sequence
 
   /** Returns a list of items of type T which match the list of primary keys
-    * @param keys
+    * @param primaryKeys
     *   A list of primary keys of type K. The case class of type K should match the table primary key.
     * @param tableName
     *   The name of the table
@@ -91,17 +84,17 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
     * @return
     *   A list of case classes of type T which the values populated from Dynamo, wrapped with F[_]
     */
-  def getItems[T <: Product, K <: Product](keys: List[K], tableName: String)(implicit
+  def getItems[T <: Product, K <: Product](primaryKeys: List[K], tableName: String)(implicit
       returnFormat: DynamoFormat[T],
       keyFormat: DynamoFormat[K]
   ): F[List[T]] = {
-    val primaryKeys = keys
+    val primaryKeysAsAttributeValues = primaryKeys
       .map(keyFormat.write)
       .map(_.toAttributeValue.m())
       .asJava
 
     val keysAndAttributes = KeysAndAttributes.builder
-      .keys(primaryKeys)
+      .keys(primaryKeysAsAttributeValues)
       .build
     val batchGetItemRequest = BatchGetItemRequest.builder
       .requestItems(Map(tableName -> keysAndAttributes).asJava)
@@ -112,7 +105,7 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
         .fromCompletableFuture {
           Async[F].pure(dynamoDBClient.batchGetItem(batchGetItemRequest))
         }
-      result <- processBatchResponse[T](batchResponse, tableName)
+      result <- validateAndConvertBatchGetItemResponse[T](batchResponse, tableName)
     } yield result
   }
 
