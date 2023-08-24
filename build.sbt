@@ -67,7 +67,8 @@ lazy val dynamoDb = (project in file("dynamodb"))
   name:= "da-dynamodb-client",
   description := "A project containing useful methods for interacting with DynamoDb",
   libraryDependencies ++= Seq(
-    dynamoDB
+    dynamoDB,
+    scanamo
   )
 )
 

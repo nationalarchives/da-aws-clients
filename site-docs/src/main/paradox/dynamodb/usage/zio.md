@@ -12,6 +12,7 @@ group3="dev.zio" artifact3="zio-interop-cats_2.13" version3="23.0.0.5"
 
 
 ## Examples
+
 ```scala
 import zio.stream.Stream
 import zio._
@@ -20,24 +21,30 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 import uk.gov.nationalarchives.DADynamoDBClient
 import uk.gov.nationalarchives.DADynamoDBClient.DynamoDbRequest
+import org.scanamo.generic.auto._
 
 val zioClient = DADynamoDBClient[Task]()
-def getAttributeValueSetUpExample(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String, attributeName2: String): IO[Map[String, AttributeValue]] = {
-  val primaryKeyAttribute = AttributeValue
-    .builder()
-    .s(primaryKeyValue) // '.s' for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail
-    .build()
 
-  val dynamoDbRequest = DynamoDbRequest(
-    tableName,
-    Map(primaryKeyName -> primaryKeyAttribute),
-    Map("attributeName" -> None, "attributeName2" -> None)
-  )
-  zioClient.getAttributeValues(dynamoDbRequest)
+case class PrimaryKey(id: String)
+
+case class GetItemsResponse(attributeName: String, attributeName2: String)
+
+case class WriteItemsNestedRequest(attributeName2: String)
+
+case class WriteItemsRequest(attributeName: String, writeItemsNestedRequest: WriteItemsNestedRequest)
+
+def getItemsExample(tableName: String, primaryKeyValue: String): Task[List[GetItemsResponse]] = {
+  val primaryKey = PrimaryKey(primaryKeyValue)
+  fs2Client.getItems[GetItemsResponse, PrimaryKey](dynamoDbRequest)
+}
+
+def writeItemsExample(tableName: String): Task[BatchWriteItemResponse] = {
+  val writeItemsRequest = List(WriteItemsRequest("attributeValue", WriteItemsNestedRequest("attributeValue2")))
+  fs2Client.writeItems(tableName, writeItemsRequest)
 }
 
 def updateAttributeValueSetUpExample(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String,
-                         attributeName2: String, newAttributeValue: String, newAttributeValue2: String): IO[Int] = {
+                                     attributeName2: String, newAttributeValue: String, newAttributeValue2: String): Task[Int] = {
   val primaryKeyAttribute = AttributeValue
     .builder()
     .s(primaryKeyValue) // '.s' for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail

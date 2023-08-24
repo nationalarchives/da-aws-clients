@@ -2,6 +2,8 @@ package uk.gov.nationalarchives
 
 import cats.effect.Async
 import cats.implicits._
+import org.scanamo.DynamoReadError._
+import org.scanamo._
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
@@ -10,7 +12,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
 import uk.gov.nationalarchives.DADynamoDBClient.DynamoDbRequest
 
-import scala.jdk.CollectionConverters.{MapHasAsJava, MapHasAsScala}
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 /** An DynamoDbAsync client. It is written generically so can be used for any effect which has an Async instance.
@@ -23,32 +25,88 @@ import scala.language.postfixOps
   */
 class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
 
-  /** Gets an attribute from dynamoDB
-    * @param dynamoDbRequest
-    *   a case class with table name, primary key and value as well as the name of the attribute
+  /** Writes the list of items of type T to Dynamo
+    * @param tableName
+    *   The name of the table
+    * @param items
+    *   A list of items to write to Dynamo
+    * @param format
+    *   An implicit scanamo formatter for type T
+    * @tparam T
+    *   The type of the items to be written to Dynamo
     * @return
-    *   The response from the get attribute call wrapped with F[_]
+    *   The BatchWriteItemResponse wrapped with F[_]
     */
-  def getAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Map[String, AttributeValue]] = {
-    val getAttributeValueRequest = GetItemRequest
-      .builder()
-      .tableName(dynamoDbRequest.tableName)
-      .key(dynamoDbRequest.primaryKeyAndItsValue asJava)
-      .build()
-
+  def writeItems[T <: Product](tableName: String, items: List[T])(implicit
+      format: DynamoFormat[T]
+  ): F[BatchWriteItemResponse] = {
+    val valuesToWrite: List[WriteRequest] = items
+      .map(format.write)
+      .map(_.toAttributeValue.m())
+      .map { itemMap =>
+        val putRequest = PutRequest.builder().item(itemMap).build
+        WriteRequest.builder().putRequest(putRequest).build
+      }
+    val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> valuesToWrite.asJava).asJava).build()
     Async[F]
       .fromCompletableFuture {
-        Async[F].pure(dynamoDBClient.getItem(getAttributeValueRequest))
+        Async[F].pure(dynamoDBClient.batchWriteItem(req))
       }
-      .map { getAttributeValueResponse =>
-        val attributeNamesAndValues: Map[String, AttributeValue] = (getAttributeValueResponse.item() asScala).toMap
-        dynamoDbRequest.attributeNamesAndValuesToUpdate.map { case (attributeName, _) =>
-          attributeNamesAndValues(attributeName)
-        } // verify that all requested attributes were returned
-        attributeNamesAndValues.filter { case (name, _) =>
-          dynamoDbRequest.attributeNamesAndValuesToUpdate.keys.toList.contains(name)
+  }
+
+  private def validateAndConvertBatchGetItemResponse[T](batchGetItemResponse: BatchGetItemResponse, tableName: String)(
+      implicit format: DynamoFormat[T]
+  ): F[List[T]] = {
+    batchGetItemResponse.responses.get(tableName).asScala.toList.map { res =>
+      DynamoValue.fromMap {
+        res.asScala.toMap.map { case (name, av) =>
+          name -> DynamoValue.fromAttributeValue(av)
         }
       }
+    } map { dynamoValue =>
+      format.read(dynamoValue).left.map(err => new Exception(err.show))
+    } map Async[F].fromEither
+  }.sequence
+
+  /** Returns a list of items of type T which match the list of primary keys
+    * @param primaryKeys
+    *   A list of primary keys of type K. The case class of type K should match the table primary key.
+    * @param tableName
+    *   The name of the table
+    * @param returnFormat
+    *   An implicit scanamo formatter for type T
+    * @param keyFormat
+    *   An implicit scanamo formatter for type K
+    * @tparam T
+    *   The type of the return case class
+    * @tparam K
+    *   The type of the primary key
+    * @return
+    *   A list of case classes of type T which the values populated from Dynamo, wrapped with F[_]
+    */
+  def getItems[T <: Product, K <: Product](primaryKeys: List[K], tableName: String)(implicit
+      returnFormat: DynamoFormat[T],
+      keyFormat: DynamoFormat[K]
+  ): F[List[T]] = {
+    val primaryKeysAsAttributeValues = primaryKeys
+      .map(keyFormat.write)
+      .map(_.toAttributeValue.m())
+      .asJava
+
+    val keysAndAttributes = KeysAndAttributes.builder
+      .keys(primaryKeysAsAttributeValues)
+      .build
+    val batchGetItemRequest = BatchGetItemRequest.builder
+      .requestItems(Map(tableName -> keysAndAttributes).asJava)
+      .build
+
+    for {
+      batchResponse <- Async[F]
+        .fromCompletableFuture {
+          Async[F].pure(dynamoDBClient.batchGetItem(batchGetItemRequest))
+        }
+      result <- validateAndConvertBatchGetItemResponse[T](batchResponse, tableName)
+    } yield result
   }
 
   /** Updates an attribute in DynamoDb
