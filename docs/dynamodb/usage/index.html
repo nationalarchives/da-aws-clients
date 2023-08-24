@@ -31,7 +31,7 @@
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.16*
+0.1.17*
 </div>
 </div>
 <div class="nav-toc">
@@ -92,7 +92,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.16*
+0.1.17*
 </div>
 </div>
 <div class="nav-toc">
@@ -153,17 +153,31 @@ val clientWithCustom = new DADynamoDBClient(dynamoDbAsyncClient)
 
 val clientWithDefault = DADynamoDBClient()
 </code></pre>
-<p>The client exposes two methods:</p>
-<pre class="prettyprint"><code class="language-scala">def getAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Map[String, AttributeValue]]
+<p>The client exposes three methods:</p>
+<pre class="prettyprint"><code class="language-scala">def getItems[T &lt;: Product, K &lt;: Product](keys: List[K], tableName: String)(implicit returnFormat: DynamoFormat[T], keyFormat: DynamoFormat[K]): F[List[T]]
 
 def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int]
+
+def writeItems[T &lt;: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
 </code></pre>
-<p>The method takes a dynamoDbRequest Case Class:</p>
+<p>The <code>updateAttributeValues</code> method takes a dynamoDbRequest Case Class:</p>
 <pre class="prettyprint"><code class="language-scala">  case class DynamoDbRequest(tableName: String,
                              primaryKeyAndItsValue: Map[String, AttributeValue],
                              attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]])
 </code></pre>
-<p>consisting of: - tableName - the DynamoDB table you want to make the edits in - primaryKeyAndItsValue - the primary key and the value to filter it down  - you can use the .builder and pass the value to the &lsquo;type&rsquo; method (&lsquo;.s&rsquo;, &lsquo;.b&rsquo;, &lsquo;.n&rsquo; etc)  - <em>Warning</em> adding a value that isn&rsquo;t already present in the table will cause DynamoDb to add another row so watch out for misspellings - attributeNamesAndValuesToUpdate - the key = attribute name you want the value of; the value = new value you want to take place of the current one  - if you are using the .getAttributeValues method, you can set the value to None</p>
+<p>consisting of:</p>
+<ul>
+  <li>tableName - the DynamoDB table you want to make the edits in</li>
+  <li>primaryKeyAndItsValue - the primary key and the value to filter it down</li>
+  <li>you can use the .builder and pass the value to the &lsquo;type&rsquo; method (&lsquo;.s&rsquo;, &lsquo;.b&rsquo;, &lsquo;.n&rsquo; etc)</li>
+  <li><em>Warning</em> adding a value that isn&rsquo;t already present in the table will cause DynamoDb to add another row so watch out for misspellings</li>
+  <li>attributeNamesAndValuesToUpdate - the key = attribute name you want the value of; the value = new value you want to take place of the current one</li>
+  <li>if you are using the .getAttributeValues method, you can set the value to None</li>
+</ul>
+<p>The <code>getItems</code> method takes a table name and a list of case classes of type <code>K</code></p>
+<p>The case class for the primary key should match the primary key of the dynamo table. </p>
+<p>If, for example, the table has a primary key called &ldquo;id&rdquo;, of type String, the case class would be <code>PrimaryKey(id: String)</code> If, for example, there is a composite key of &ldquo;id&rdquo;, of type String and &ldquo;index&rdquo; of type number, the case class would be <code>PrimaryKey(id: String, index: Long)</code></p>
+<p>The method will return a list of items of type <code>T</code></p>
 <div class="nav-next">
 <p><strong>Next:</strong> <a href="../../dynamodb/usage/zio.html">Use with Zio</a></p>
 </div>
@@ -231,7 +245,7 @@ def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int]
 <script type="text/javascript" src="../../lib/prettify/prettify.js"></script>
 <script type="text/javascript" src="../../lib/prettify/lang-scala.js"></script>
 <script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
-<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.16-SNAPSHOT', '')});</script>
+<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.17-SNAPSHOT', '')});</script>
 
 
 </html>

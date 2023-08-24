@@ -31,7 +31,7 @@
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.16*
+0.1.17*
 </div>
 </div>
 <div class="nav-toc">
@@ -92,7 +92,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.16*
+0.1.17*
 </div>
 </div>
 <div class="nav-toc">
@@ -150,13 +150,13 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <h1><a href="#use-with-zio" name="use-with-zio" class="anchor"><span class="anchor-link"></span></a>Use with Zio</h1>
 <h2><a href="#setup" name="setup" class="anchor"><span class="anchor-link"></span></a>Setup</h2>
 <p>You will need these dependencies:</p><dl class="dependency"><dt>sbt</dt><dd><pre class="prettyprint"><code class="language-scala">libraryDependencies ++= Seq(
-  "uk.gov.nationalarchives" %% "da-dynamodb-client" % "0.1.16",
+  "uk.gov.nationalarchives" %% "da-dynamodb-client" % "0.1.17",
   "dev.zio" %% "zio-interop-cats" % "23.0.0.5"
 )</code></pre></dd><dt>Maven</dt><dd><pre class="prettyprint"><code class="language-xml">&lt;dependencies&gt
   &lt;dependency&gt;
     &lt;groupId&gt;uk.gov.nationalarchives&lt;/groupId&gt;
     &lt;artifactId&gt;da-dynamodb-client_2.13&lt;/artifactId&gt;
-    &lt;version&gt;0.1.16&lt;/version&gt;
+    &lt;version&gt;0.1.17&lt;/version&gt;
   &lt;/dependency&gt
   &lt;dependency&gt;
     &lt;groupId&gt;dev.zio&lt;/groupId&gt;
@@ -164,7 +164,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
     &lt;version&gt;23.0.0.5&lt;/version&gt;
   &lt;/dependency&gt
 &lt;/dependencies&gt;</code></pre></dd><dt>Gradle</dt><dd><pre class="prettyprint"><code class="language-gradle">dependencies {
-  implementation "uk.gov.nationalarchives:da-dynamodb-client_2.13:0.1.16"
+  implementation "uk.gov.nationalarchives:da-dynamodb-client_2.13:0.1.17"
   implementation "dev.zio:zio-interop-cats_2.13:23.0.0.5"
 }</code></pre></dd></dl>
 <p><code>zio-interop-cats</code> is needed to allow us to use the ZIO Task with the cats type classes</p>
@@ -176,24 +176,30 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 import uk.gov.nationalarchives.DADynamoDBClient
 import uk.gov.nationalarchives.DADynamoDBClient.DynamoDbRequest
+import org.scanamo.generic.auto._
 
 val zioClient = DADynamoDBClient[Task]()
-def getAttributeValueSetUpExample(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String, attributeName2: String): IO[Map[String, AttributeValue]] = {
-  val primaryKeyAttribute = AttributeValue
-    .builder()
-    .s(primaryKeyValue) // &#39;.s&#39; for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail
-    .build()
 
-  val dynamoDbRequest = DynamoDbRequest(
-    tableName,
-    Map(primaryKeyName -&gt; primaryKeyAttribute),
-    Map(&quot;attributeName&quot; -&gt; None, &quot;attributeName2&quot; -&gt; None)
-  )
-  zioClient.getAttributeValues(dynamoDbRequest)
+case class PrimaryKey(id: String)
+
+case class GetItemsResponse(attributeName: String, attributeName2: String)
+
+case class WriteItemsNestedRequest(attributeName2: String)
+
+case class WriteItemsRequest(attributeName: String, writeItemsNestedRequest: WriteItemsNestedRequest)
+
+def getItemsExample(tableName: String, primaryKeyValue: String): Task[List[GetItemsResponse]] = {
+  val primaryKey = PrimaryKey(primaryKeyValue)
+  fs2Client.getItems[GetItemsResponse, PrimaryKey](dynamoDbRequest)
+}
+
+def writeItemsExample(tableName: String): Task[BatchWriteItemResponse] = {
+  val writeItemsRequest = List(WriteItemsRequest(&quot;attributeValue&quot;, WriteItemsNestedRequest(&quot;attributeValue2&quot;)))
+  fs2Client.writeItems(tableName, writeItemsRequest)
 }
 
 def updateAttributeValueSetUpExample(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String,
-                         attributeName2: String, newAttributeValue: String, newAttributeValue2: String): IO[Int] = {
+                                     attributeName2: String, newAttributeValue: String, newAttributeValue2: String): Task[Int] = {
   val primaryKeyAttribute = AttributeValue
     .builder()
     .s(primaryKeyValue) // &#39;.s&#39; for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail
@@ -292,7 +298,7 @@ def updateAttributeValueSetUpExample(tableName: String, primaryKeyName: String, 
 <script type="text/javascript" src="../../lib/prettify/prettify.js"></script>
 <script type="text/javascript" src="../../lib/prettify/lang-scala.js"></script>
 <script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
-<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.16-SNAPSHOT', '')});</script>
+<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.17-SNAPSHOT', '')});</script>
 
 
 </html>
