@@ -4,16 +4,20 @@ import cats.effect.Async
 import cats.implicits._
 import org.scanamo.DynamoReadError._
 import org.scanamo._
+import org.scanamo.query.{Condition => ScanamoCondition, _}
+import org.scanamo.request.RequestCondition
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
-import uk.gov.nationalarchives.DADynamoDBClient.DynamoDbRequest
+import uk.gov.nationalarchives.DADynamoDBClient._
 
+import java.util
+import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters._
-import scala.language.postfixOps
+import scala.language.{implicitConversions, postfixOps}
 
 /** An DynamoDbAsync client. It is written generically so can be used for any effect which has an Async instance.
   * Requires an implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -48,16 +52,19 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
         WriteRequest.builder().putRequest(putRequest).build
       }
     val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> valuesToWrite.asJava).asJava).build()
-    Async[F]
-      .fromCompletableFuture {
-        Async[F].pure(dynamoDBClient.batchWriteItem(req))
-      }
+    dynamoDBClient.batchWriteItem(req).liftF
   }
 
-  private def validateAndConvertBatchGetItemResponse[T](batchGetItemResponse: BatchGetItemResponse, tableName: String)(
-      implicit format: DynamoFormat[T]
+  implicit class CompletableFutureUtils[T](completableFuture: CompletableFuture[T]) {
+    def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
+  }
+
+  private def validateAndConvertAttributeValuesList[T](
+      attributeValuesList: util.List[util.Map[String, AttributeValue]]
+  )(implicit
+      format: DynamoFormat[T]
   ): F[List[T]] = {
-    batchGetItemResponse.responses.get(tableName).asScala.toList.map { res =>
+    attributeValuesList.asScala.toList.map { res =>
       DynamoValue.fromMap {
         res.asScala.toMap.map { case (name, av) =>
           name -> DynamoValue.fromAttributeValue(av)
@@ -101,11 +108,8 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
       .build
 
     for {
-      batchResponse <- Async[F]
-        .fromCompletableFuture {
-          Async[F].pure(dynamoDBClient.batchGetItem(batchGetItemRequest))
-        }
-      result <- validateAndConvertBatchGetItemResponse[T](batchResponse, tableName)
+      batchResponse <- dynamoDBClient.batchGetItem(batchGetItemRequest).liftF
+      result <- validateAndConvertAttributeValuesList[T](batchResponse.responses.get(tableName))
     } yield result
   }
 
@@ -117,7 +121,7 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
     * @return
     *   The http status code from the updateAttributeValues call wrapped with F[_]
     */
-  def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int] = {
+  def updateAttributeValues(dynamoDbRequest: DADynamoDbRequest): F[Int] = {
     val attributeValueUpdates =
       dynamoDbRequest.attributeNamesAndValuesToUpdate.map { case (name, attributeValue) =>
         name -> AttributeValueUpdate
@@ -134,14 +138,53 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
       .attributeUpdates(attributeValueUpdates)
       .build()
 
-    Async[F]
-      .fromCompletableFuture {
-        Async[F].pure(dynamoDBClient.updateItem(updateAttributeValueRequest))
-      }
+    dynamoDBClient
+      .updateItem(updateAttributeValueRequest)
+      .liftF
       .map(_.sdkHttpResponse().statusCode())
+  }
+
+  /** @param tableName
+    *   The name of the table
+    * @param requestCondition
+    *   This is not passed in directly. You construct either a Query[_] or a ConditionExpression instance. This is then
+    *   converted to RequestCondition by the implicits in the companion object.
+    * @param returnTypeFormat
+    *   An implicit scanamo formatter for return type U
+    * @tparam U
+    *   The return type for the function
+    * @return
+    *   A list of type U wrapped in the F effect
+    */
+  def scanItems[U <: Product](tableName: String, requestCondition: RequestCondition)(implicit
+      returnTypeFormat: DynamoFormat[U]
+  ): F[List[U]] = {
+    val expressionAttributeValues =
+      requestCondition.dynamoValues.flatMap(_.toExpressionAttributeValues).getOrElse(util.Collections.emptyMap())
+
+    val scanRequest = ScanRequest.builder
+      .tableName(tableName)
+      .expressionAttributeNames(requestCondition.attributeNames.asJava)
+      .filterExpression(requestCondition.expression)
+      .expressionAttributeValues(expressionAttributeValues)
+      .build
+    dynamoDBClient
+      .scan(scanRequest)
+      .liftF
+      .flatMap(res => validateAndConvertAttributeValuesList(res.items()))
   }
 }
 object DADynamoDBClient {
+
+  implicit def conditionToRequestCondition[C: ConditionExpression](condition: C): RequestCondition = ScanamoCondition(
+    condition
+  ).apply.runEmptyA.value
+  implicit def queryToRequestCondition(query: Query[_]): RequestCondition = query.apply
+  implicit def keyEqualsToRequestCondition[T: UniqueKeyCondition, U: UniqueKeyCondition](
+      andEqualsCondition: AndEqualsCondition[T, U]
+  )(implicit qkc: QueryableKeyCondition[AndEqualsCondition[T, U]]): RequestCondition = {
+    Query[AndEqualsCondition[T, U]](andEqualsCondition)
+  }
   private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   private val dynamoDBClient: DynamoDbAsyncClient = DynamoDbAsyncClient
     .builder()
@@ -150,7 +193,7 @@ object DADynamoDBClient {
     .credentialsProvider(DefaultCredentialsProvider.create())
     .build()
 
-  case class DynamoDbRequest(
+  case class DADynamoDbRequest(
       tableName: String,
       primaryKeyAndItsValue: Map[String, AttributeValue],
       attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]]

@@ -9,7 +9,7 @@ val clientWithCustom = new DADynamoDBClient(dynamoDbAsyncClient)
 val clientWithDefault = DADynamoDBClient()
 ```
 
-The client exposes three methods:
+The client exposes four methods:
 
 ```scala
 def getItems[T <: Product, K <: Product](keys: List[K], tableName: String)(implicit returnFormat: DynamoFormat[T], keyFormat: DynamoFormat[K]): F[List[T]]
@@ -17,6 +17,8 @@ def getItems[T <: Product, K <: Product](keys: List[K], tableName: String)(impli
 def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int]
 
 def writeItems[T <: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
+
+def scanItems[U <: Product](tableName: String, requestCondition: RequestCondition)(implicit returnTypeFormat: DynamoFormat[U]): F[List[U]]
 ```
 
 The `updateAttributeValues` method takes a dynamoDbRequest Case Class:
@@ -43,6 +45,11 @@ If, for example, the table has a primary key called "id", of type String, the ca
 If, for example, there is a composite key of "id", of type String and "index" of type number, the case class would be `PrimaryKey(id: String, index: Long)`
 
 The method will return a list of items of type `T`
+
+The `scanItems` method takes a table name and a Scanamo filter query. The query is converted to a Scanamo `RequestCondition` using implicits in the companion object.
+
+See the [Zio](zio.md) and [Fs2](fs2.md) pages for examples.
+
 
 @@@ index
 

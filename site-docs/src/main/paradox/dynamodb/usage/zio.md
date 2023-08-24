@@ -22,6 +22,8 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue
 import uk.gov.nationalarchives.DADynamoDBClient
 import uk.gov.nationalarchives.DADynamoDBClient.DynamoDbRequest
 import org.scanamo.generic.auto._
+import org.scanamo.syntax._ //Used to construct the filters
+import uk.gov.nationalarchives.DADynamoDBClient._ //Implicits to convert the query to a `RequestCondition`
 
 val zioClient = DADynamoDBClient[Task]()
 
@@ -32,6 +34,8 @@ case class GetItemsResponse(attributeName: String, attributeName2: String)
 case class WriteItemsNestedRequest(attributeName2: String)
 
 case class WriteItemsRequest(attributeName: String, writeItemsNestedRequest: WriteItemsNestedRequest)
+
+case class DynamoTable(batchId: String, parentPath: String)
 
 def getItemsExample(tableName: String, primaryKeyValue: String): Task[List[GetItemsResponse]] = {
   val primaryKey = PrimaryKey(primaryKeyValue)
@@ -59,6 +63,23 @@ def updateAttributeValueSetUpExample(tableName: String, primaryKeyName: String, 
     )
   )
   zioClient.updateAttributeValues(dynamoDbRequest)
+}
+
+def scanItemsExample(tableName: String): Unit = {
+  val andEqualsFilter = fs2Client.scanItems[DynamoTable](
+    tableName,
+    "batchId" === "testBatchId" and "parentPath" === "/a/parent/path"
+  )
+
+  val lessThanFilter = fs2Client.scanItems[DynamoTable](
+    tableName,
+    "numericAttribute" < 5
+  )
+
+  val lessThanEqualsOrFilter = fs2Client.scanItems[DynamoTable](
+    tableName,
+    "numericAttribute" < 5 or "parentPath" === "/a/parent/path"
+  )
 }
 
 ```
