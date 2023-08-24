@@ -323,13 +323,13 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
 
       writeCaptor.getAllValues.size should equal(1)
       val batchWriteItemRequest = writeCaptor.getAllValues.asScala.head
-      val batchGetItemRequestKeys = batchWriteItemRequest.requestItems().keySet().asScala
-      batchGetItemRequestKeys.size should equal(1)
-      batchGetItemRequestKeys.head should equal("table")
-      val batchGetItemRequestValuesToWrite =
-        batchWriteItemRequest.requestItems().get(batchGetItemRequestKeys.head).asScala
-      batchGetItemRequestValuesToWrite.size should equal(input.length)
-      val attributeNameAndValues = batchGetItemRequestValuesToWrite.map(_.putRequest().item().toString).mkString(" ")
+      val batchWriteItemRequestKeys = batchWriteItemRequest.requestItems().keySet().asScala
+      batchWriteItemRequestKeys.size should equal(1)
+      batchWriteItemRequestKeys.head should equal("table")
+      val batchWriteItemRequestValues =
+        batchWriteItemRequest.requestItems().get(batchWriteItemRequestKeys.head).asScala
+      batchWriteItemRequestValues.size should equal(input.length)
+      val attributeNameAndValues = batchWriteItemRequestValues.map(_.putRequest().item().toString).mkString(" ")
 
       attributeNameAndValues should equal(expectedAttributeNamesAndValues)
     }
