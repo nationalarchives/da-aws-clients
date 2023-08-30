@@ -373,137 +373,148 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
   )
 
   forAll(queryTable) { (query, expectedQuery) =>
-    "scanItems" should s"send the correct $expectedQuery to the ScanRequest" in {
+    "queryItems" should s"send the correct $expectedQuery to the QueryRequest" in {
       val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
-      val scanRequestCaptor: ArgumentCaptor[ScanRequest] = ArgumentCaptor.forClass(classOf[ScanRequest])
+      val queryRequestCaptor: ArgumentCaptor[QueryRequest] = ArgumentCaptor.forClass(classOf[QueryRequest])
       val items = util.Collections.emptyMap[String, AttributeValue]()
-      val scanResponse = ScanResponse.builder
+      val queryResponse = QueryResponse.builder
         .items(items)
         .build()
 
-      val clientScanResponseInCf: CompletableFuture[ScanResponse] = CompletableFuture.completedFuture(scanResponse)
+      val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
 
-      when(mockDynamoDbAsyncClient.scan(scanRequestCaptor.capture())).thenReturn(clientScanResponseInCf)
+      when(mockDynamoDbAsyncClient.query(queryRequestCaptor.capture())).thenReturn(clientQueryResponseInCf)
 
       val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
-      client.scanItems[MockSingleAttributeRequest]("testTable", query).unsafeRunSync()
+      client.queryItems[MockSingleAttributeRequest]("testTable", "indexName", query).unsafeRunSync()
 
-      val scanRequestValue = scanRequestCaptor.getValue
-      val attributeNames = scanRequestValue.expressionAttributeNames()
-      val filterExpressionKeysReplaced = attributeNames.asScala.foldLeft(scanRequestValue.filterExpression()) {
-        (filterExpression, attributeNames) =>
-          filterExpression.replaceAll(attributeNames._1, attributeNames._2)
-      }
-      val filterExpressionValuesReplaced =
-        scanRequestValue.expressionAttributeValues.asScala.foldLeft(filterExpressionKeysReplaced) {
-          (filterExpression, expressionValues) =>
-            filterExpression.replaceAll(expressionValues._1, expressionValues._2.toString)
+      val queryRequestValue = queryRequestCaptor.getValue
+
+      val attributeNames = queryRequestValue.expressionAttributeNames()
+      val keyConditionExpressionKeysReplaced =
+        attributeNames.asScala.foldLeft(queryRequestValue.keyConditionExpression()) {
+          (keyConditionExpression, attributeNames) =>
+            keyConditionExpression.replaceAll(attributeNames._1, attributeNames._2)
         }
-      filterExpressionValuesReplaced should equal(expectedQuery)
+      val keyConditionExpressionValuesReplaced =
+        queryRequestValue.expressionAttributeValues.asScala.foldLeft(keyConditionExpressionKeysReplaced) {
+          (keyConditionExpression, expressionValues) =>
+            keyConditionExpression.replaceAll(expressionValues._1, expressionValues._2.toString)
+        }
+      keyConditionExpressionValuesReplaced should equal(expectedQuery)
+      queryRequestValue.indexName() should equal("indexName")
     }
   }
 
-  "scanItems" should "return the correct value if attributeName is valid" in {
+  "queryItems" should "return the correct value if attributeName is valid" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val items = Map(
       "mockAttribute" -> AttributeValue.builder().s("mockAttributeValue").build(),
       "mockAttribute2" -> AttributeValue.builder().s("mockAttributeValue2").build()
     ).asJava
-    val scanResponse = ScanResponse.builder
+    val queryResponse = QueryResponse.builder
       .items(items)
       .build()
-    val clientScanResponseInCf: CompletableFuture[ScanResponse] = CompletableFuture.completedFuture(scanResponse)
+    val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
 
-    when(mockDynamoDbAsyncClient.scan(any[ScanRequest])).thenReturn(clientScanResponseInCf)
+    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
-    val scanItemsResponseF: IO[List[MockTwoAttributesRequest]] =
-      client.scanItems[MockTwoAttributesRequest]("testTable", "mockAttribute" > 0)
-    val scanItemsResponse = scanItemsResponseF.unsafeRunSync()
+    val queryItemsResponseF: IO[List[MockTwoAttributesRequest]] =
+      client.queryItems[MockTwoAttributesRequest]("testTable", "indexName", "mockAttribute" > 0)
+    val queryItemsResponse = queryItemsResponseF.unsafeRunSync()
 
-    scanItemsResponse.head.mockAttribute should equal("mockAttributeValue")
-    scanItemsResponse.head.mockAttribute2 should equal("mockAttributeValue2")
+    queryItemsResponse.head.mockAttribute should equal("mockAttributeValue")
+    queryItemsResponse.head.mockAttribute2 should equal("mockAttributeValue2")
   }
 
-  "scanItems" should "return an empty string if the dynamo doesn't return an value for an attribute" in {
+  "queryItems" should "return an empty string if the dynamo doesn't return an value for an attribute" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val items = Map(
       "mockAttribute" -> AttributeValue.builder().s("mockAttributeValue").build(),
       "invalidAttribute" -> AttributeValue.builder().s("mockAttributeValue").build()
     ).asJava
-    val scanResponse = ScanResponse.builder
+    val queryResponse = QueryResponse.builder
       .items(items)
       .build()
-    val clientScanResponseInCf: CompletableFuture[ScanResponse] = CompletableFuture.completedFuture(scanResponse)
+    val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
 
-    when(mockDynamoDbAsyncClient.scan(any[ScanRequest])).thenReturn(clientScanResponseInCf)
+    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
 
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
-    val scanItemsResponse = client
-      .scanItems[MockTwoAttributesRequest]("testTable", "mockAttribute" === "mockAttributeValue" and "asdasd" === "")
+    val queryItemsResponse = client
+      .queryItems[MockTwoAttributesRequest](
+        "testTable",
+        "indexName",
+        "mockAttribute" === "mockAttributeValue" and "asdasd" === ""
+      )
       .unsafeRunSync()
 
-    scanItemsResponse.head.mockAttribute should equal("mockAttributeValue")
-    scanItemsResponse.head.mockAttribute2 should equal("")
+    queryItemsResponse.head.mockAttribute should equal("mockAttributeValue")
+    queryItemsResponse.head.mockAttribute2 should equal("")
 
   }
 
-  "scanItems" should "return an error if the value is of an unexpected type" in {
+  "queryItems" should "return an error if the value is of an unexpected type" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val items = Map(
       "mockAttribute" -> AttributeValue.builder().n("1").build()
     ).asJava
-    val scanResponse = ScanResponse.builder
+    val queryResponse = QueryResponse.builder
       .items(items)
       .build()
-    val clientScanResponseInCf: CompletableFuture[ScanResponse] = CompletableFuture.completedFuture(scanResponse)
+    val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
 
-    when(mockDynamoDbAsyncClient.scan(any[ScanRequest])).thenReturn(clientScanResponseInCf)
+    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
 
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val ex = intercept[Exception] {
       client
-        .scanItems[MockSingleAttributeRequest]("testTable", "mockAttribute" === "mockAttributeValue")
+        .queryItems[MockSingleAttributeRequest]("testTable", "indexName", "mockAttribute" === "mockAttributeValue")
         .unsafeRunSync()
     }
     ex.getMessage should equal("'mockAttribute': not of type: 'S' was 'DynNum(1)'")
   }
 
-  "scanItems" should "return an error if there are nested field values missing" in {
+  "queryItems" should "return an error if there are nested field values missing" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val items = Map(
       "invalidAttribute" -> AttributeValue.builder().s("mockAttributeValue").build()
     ).asJava
 
-    val scanResponse = ScanResponse.builder
+    val queryResponse = QueryResponse.builder
       .items(items)
       .build()
-    val clientScanResponseInCf: CompletableFuture[ScanResponse] = CompletableFuture.completedFuture(scanResponse)
+    val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
 
-    when(mockDynamoDbAsyncClient.scan(any[ScanRequest])).thenReturn(clientScanResponseInCf)
+    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
 
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val ex = intercept[Exception] {
-      client.scanItems[MockNestedRequest]("testTable", "mockAttribute" === "mockAttributeValue").unsafeRunSync()
+      client
+        .queryItems[MockNestedRequest]("testTable", "indexName", "mockAttribute" === "mockAttributeValue")
+        .unsafeRunSync()
     }
     ex.getMessage should equal("'mockSingleAttributeResponse': missing")
   }
 
-  "scanItems" should "return an error if the client does" in {
+  "queryItems" should "return an error if the client does" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
 
-    when(mockDynamoDbAsyncClient.scan(any[ScanRequest])).thenThrow(
+    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenThrow(
       ResourceNotFoundException.builder.message("Table name could not be found").build()
     )
 
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val ex = intercept[Exception] {
-      client.scanItems[MockNestedRequest]("testTable", "mockAttribute" === "mockAttributeValue").unsafeRunSync()
+      client
+        .queryItems[MockNestedRequest]("testTable", "indexName", "mockAttribute" === "mockAttributeValue")
+        .unsafeRunSync()
     }
     ex.getMessage should be("Table name could not be found")
   }

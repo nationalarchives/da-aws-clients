@@ -146,6 +146,8 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
 
   /** @param tableName
     *   The name of the table
+    * @param gsiName
+    *   The name of the global secondary index
     * @param requestCondition
     *   This is not passed in directly. You construct either a Query[_] or a ConditionExpression instance. This is then
     *   converted to RequestCondition by the implicits in the companion object.
@@ -156,20 +158,21 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
     * @return
     *   A list of type U wrapped in the F effect
     */
-  def scanItems[U <: Product](tableName: String, requestCondition: RequestCondition)(implicit
+  def queryItems[U <: Product](tableName: String, gsiName: String, requestCondition: RequestCondition)(implicit
       returnTypeFormat: DynamoFormat[U]
   ): F[List[U]] = {
     val expressionAttributeValues =
       requestCondition.dynamoValues.flatMap(_.toExpressionAttributeValues).getOrElse(util.Collections.emptyMap())
 
-    val scanRequest = ScanRequest.builder
+    val queryRequest = QueryRequest.builder
       .tableName(tableName)
+      .indexName(gsiName)
+      .keyConditionExpression(requestCondition.expression)
       .expressionAttributeNames(requestCondition.attributeNames.asJava)
-      .filterExpression(requestCondition.expression)
       .expressionAttributeValues(expressionAttributeValues)
       .build
     dynamoDBClient
-      .scan(scanRequest)
+      .query(queryRequest)
       .liftF
       .flatMap(res => validateAndConvertAttributeValuesList(res.items()))
   }

@@ -60,20 +60,23 @@ def updateAttributeValuesSetUpExample(tableName: String, primaryKeyName: String,
   fs2Client.updateAttributeValues(dynamoDbRequest)
 }
 
-def scanItemsExample(tableName: String): Unit = {
-  val andEqualsFilter = fs2Client.scanItems[DynamoTable](
+def queryItemsExample(tableName: String): Unit = {
+  val andEqualsFilter = fs2Client.queryItems[DynamoTable](
     tableName,
+    gsiName,
     "batchId" === "testBatchId" and "parentPath" === "/a/parent/path"
   )
-  
-  val lessThanFilter = fs2Client.scanItems[DynamoTable](
+
+  val lessThanFilter = fs2Client.queryItems[DynamoTable](
     tableName,
+    gsiName,
     "numericAttribute" < 5
   )
-  
-  val lessThanEqualsOrFilter = fs2Client.scanItems[DynamoTable](
+
+  val lessThanEqualsOrFilter = fs2Client.queryItems[DynamoTable](
     tableName,
+    gsiName,
     "numericAttribute" < 5 or "parentPath" === "/a/parent/path"
-  ) 
+  )
 }
 ```
