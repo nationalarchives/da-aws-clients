@@ -10,7 +10,14 @@ import reactor.test.StepVerifier
 import software.amazon.awssdk.core.SdkResponse
 import software.amazon.awssdk.core.async.ResponsePublisher
 import software.amazon.awssdk.core.internal.async.ByteArrayAsyncRequestBody
-import software.amazon.awssdk.services.s3.model.{CopyObjectResponse, GetObjectResponse, PutObjectResponse}
+import software.amazon.awssdk.services.s3.S3AsyncClient
+import software.amazon.awssdk.services.s3.model.{
+  CopyObjectResponse,
+  GetObjectResponse,
+  HeadObjectRequest,
+  HeadObjectResponse,
+  PutObjectResponse
+}
 import software.amazon.awssdk.transfer.s3.S3TransferManager
 import software.amazon.awssdk.transfer.s3.internal.model.{DefaultCopy, DefaultDownload, DefaultUpload}
 import software.amazon.awssdk.transfer.s3.internal.progress.{DefaultTransferProgress, DefaultTransferProgressSnapshot}
@@ -29,7 +36,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
 
     val defaultDownload = createDownloadResponse(testBytes)
     when(transferManagerMock.download(any[S3Download])).thenReturn(defaultDownload)
-    val client = new DAS3Client[IO](transferManagerMock)
+    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val publisher = client.download("bucket", "key").unsafeRunSync()
 
     StepVerifier
@@ -44,7 +51,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val defaultDownload = createDownloadResponse("test".getBytes())
     when(transferManagerMock.download(downloadCaptor.capture())).thenReturn(defaultDownload)
 
-    val client = new DAS3Client[IO](transferManagerMock)
+    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     client.download("bucket", "key").unsafeRunSync()
 
     val responseObjectRequest = downloadCaptor.getValue.getObjectRequest
@@ -56,7 +63,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val transferManagerMock = mock[S3TransferManager]
     when(transferManagerMock.download(any[S3Download])).thenThrow(new Exception("Error downloading"))
 
-    val client = new DAS3Client[IO](transferManagerMock)
+    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val ex = intercept[Exception] {
       client.download("bucket", "key").unsafeRunSync()
     }
@@ -68,7 +75,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val uploadResponse = createUploadResponse()
     when(transferManagerMock.upload(any[UploadRequest])).thenReturn(uploadResponse)
 
-    val client = new DAS3Client[IO](transferManagerMock)
+    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val publisher = new ByteArrayAsyncRequestBody("test".getBytes, "application/octet-stream")
     val response = client.upload("bucket", "key", 1, publisher).unsafeRunSync()
     response.response().eTag() should equal("testEtag")
@@ -81,7 +88,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val uploadResponse = createUploadResponse()
     when(transferManagerMock.upload(uploadCaptor.capture())).thenReturn(uploadResponse)
 
-    val client = new DAS3Client[IO](transferManagerMock)
+    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val publisher = new ByteArrayAsyncRequestBody(content, "application/octet-stream")
     client.upload("bucket", "key", 1, publisher).unsafeRunSync()
 
@@ -95,7 +102,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     when(transferManagerMock.upload(any[UploadRequest])).thenThrow(new Exception("Error uploading"))
 
     val publisher = new ByteArrayAsyncRequestBody("test".getBytes, "application/octet-stream")
-    val client = new DAS3Client[IO](transferManagerMock)
+    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val ex = intercept[Exception] {
       client.upload("bucket", "key", 1, publisher).unsafeRunSync()
     }
@@ -107,7 +114,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val copyCompletedResponse = createCopyCompletedResponse()
     when(transferManagerMock.copy(any[CopyRequest])).thenReturn(copyCompletedResponse)
 
-    val client = new DAS3Client[IO](transferManagerMock)
+    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val response = client.copy("sourceBucket", "sourceKey", "destinationBucket", "destinationKey").unsafeRunSync()
     response.response().versionId() should equal("version")
   }
@@ -118,7 +125,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val copyCompletedResponse = createCopyCompletedResponse()
     when(transferManagerMock.copy(copyCaptor.capture())).thenReturn(copyCompletedResponse)
 
-    val client = new DAS3Client[IO](transferManagerMock)
+    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     client.copy("sourceBucket", "sourceKey", "destinationBucket", "destinationKey").unsafeRunSync()
 
     val requestBody = copyCaptor.getValue.copyObjectRequest()
@@ -133,11 +140,51 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val transferManagerMock = mock[S3TransferManager]
     when(transferManagerMock.copy(any[CopyRequest])).thenThrow(new Exception("Error copying"))
 
-    val client = new DAS3Client[IO](transferManagerMock)
+    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val ex = intercept[Exception] {
       client.copy("sourceBucket", "sourceKey", "destinationBucket", "destinationKey").unsafeRunSync()
     }
     ex.getMessage should equal("Error copying")
+  }
+
+  "headObject" should "return the correct 'head object' response" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val headObjectResponse = createHeadObjectResponse()
+    when(asyncClientMock.headObject(any[HeadObjectRequest])).thenReturn(headObjectResponse)
+
+    val client = DAS3Client[IO](asyncClientMock)
+    val response = client.headObject("bucket", "key").unsafeRunSync()
+    response.contentLength() should equal(10)
+  }
+
+  "headObject" should "call the async client headObject with the correct arguments" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val headObjectCaptor: ArgumentCaptor[HeadObjectRequest] = ArgumentCaptor.forClass(classOf[HeadObjectRequest])
+    val headObjectResponse = createHeadObjectResponse()
+    when(asyncClientMock.headObject(headObjectCaptor.capture())).thenReturn(headObjectResponse)
+
+    val client = DAS3Client[IO](asyncClientMock)
+    client.headObject("bucket", "key").unsafeRunSync()
+
+    val requestBody = headObjectCaptor.getValue
+    requestBody.bucket() should equal("bucket")
+    requestBody.key() should equal("key")
+  }
+
+  "headObject" should "return an error if the async client returns an error" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    when(asyncClientMock.headObject(any[HeadObjectRequest])).thenThrow(new Exception("Error calling head object"))
+
+    val client = DAS3Client[IO](asyncClientMock)
+    val ex = intercept[Exception] {
+      client.headObject("bucket", "key").unsafeRunSync()
+    }
+    ex.getMessage should equal("Error calling head object")
+  }
+
+  private def createHeadObjectResponse(): CompletableFuture[HeadObjectResponse] = {
+    val headObjectResponse = HeadObjectResponse.builder().contentLength(10).build
+    CompletableFuture.completedFuture(headObjectResponse)
   }
 
   private def createCopyCompletedResponse(): Copy = {

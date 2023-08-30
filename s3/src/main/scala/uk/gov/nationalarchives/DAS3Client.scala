@@ -12,6 +12,8 @@ import software.amazon.awssdk.transfer.s3.S3TransferManager
 import software.amazon.awssdk.transfer.s3.model._
 
 import java.nio.ByteBuffer
+import java.util.concurrent.CompletableFuture
+import scala.util.Try
 
 /** An S3 client. It is written generically so can be used for any effect which has an Async instance. Requires an
   * implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -21,7 +23,7 @@ import java.nio.ByteBuffer
   * @tparam F
   *   Type of the effect
   */
-class DAS3Client[F[_]: Async](transferManager: S3TransferManager) {
+class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S3AsyncClient) {
 
   /** Copies an S3 object to a destination bucket and key
     * @param sourceBucket
@@ -48,10 +50,7 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager) {
       .destinationKey(destinationKey)
       .build()
     val copyRequest: CopyRequest = CopyRequest.builder.copyObjectRequest(copyObjectRequest).build
-    Async[F]
-      .fromCompletableFuture {
-        Async[F].pure(transferManager.copy(copyRequest).completionFuture())
-      }
+    transferManager.copy(copyRequest).completionFuture().liftF
   }
 
   /** Downloads a file from S3
@@ -68,10 +67,10 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager) {
       .getObjectRequest(getObjectRequest)
       .responseTransformer(AsyncResponseTransformer.toPublisher[GetObjectResponse])
       .build()
-    Async[F]
-      .fromCompletableFuture {
-        Async[F].pure(transferManager.download(downloadRequest).completionFuture())
-      }
+    transferManager
+      .download(downloadRequest)
+      .completionFuture()
+      .liftF
       .map(_.result())
   }
 
@@ -100,7 +99,29 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager) {
     val response: Upload = transferManager.upload(
       UploadRequest.builder().requestBody(requestBody).putObjectRequest(putObjectRequest).build()
     )
-    Async[F].fromCompletableFuture(Async[F].pure(response.completionFuture()))
+    response.completionFuture().liftF
+  }
+
+  /** Makes a head object request for an S3 object
+    * @param bucket
+    *   The bucket where the object is stored
+    * @param key
+    *   The key of the object
+    * @return
+    *   The HeadObjectResponse from AWS wrapped in the F effect
+    */
+  def headObject(bucket: String, key: String): F[HeadObjectResponse] = {
+    val headObjectRequest = HeadObjectRequest.builder
+      .bucket(bucket)
+      .key(key)
+      .build
+    val d = Try(asyncClient.headObject(headObjectRequest).get())
+    print(d)
+    asyncClient.headObject(headObjectRequest).liftF
+  }
+
+  private implicit class CompletableFutureUtils[T](completableFuture: CompletableFuture[T]) {
+    def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
   }
 }
 object DAS3Client {
@@ -117,12 +138,13 @@ object DAS3Client {
     .s3Client(asyncClient)
     .build()
 
-  def apply[F[_]: Async](): DAS3Client[F] = new DAS3Client[F](transferManager)
+  def apply[F[_]: Async](): DAS3Client[F] = new DAS3Client[F](transferManager, asyncClient)
+
   def apply[F[_]: Async](asyncClient: S3AsyncClient): DAS3Client[F] = {
     val transferManager: S3TransferManager = S3TransferManager
       .builder()
       .s3Client(asyncClient)
       .build()
-    new DAS3Client[F](transferManager)
+    new DAS3Client[F](transferManager, asyncClient)
   }
 }
