@@ -13,7 +13,6 @@ import software.amazon.awssdk.transfer.s3.model._
 
 import java.nio.ByteBuffer
 import java.util.concurrent.CompletableFuture
-import scala.util.Try
 
 /** An S3 client. It is written generically so can be used for any effect which has an Async instance. Requires an
   * implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -115,8 +114,6 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
       .bucket(bucket)
       .key(key)
       .build
-    val d = Try(asyncClient.headObject(headObjectRequest).get())
-    print(d)
     asyncClient.headObject(headObjectRequest).liftF
   }
 
