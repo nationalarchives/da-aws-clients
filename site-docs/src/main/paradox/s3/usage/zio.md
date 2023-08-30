@@ -17,7 +17,7 @@ group3="dev.zio" artifact3="zio-interop-cats_2.13" version3="23.0.0.5"
 ```scala
 import zio.stream.Stream
 import zio._
-import software.amazon.awssdk.transfer.s3.model.CompletedUpload
+import software.amazon.awssdk.transfer.s3.model._
 import java.nio.ByteBuffer
 import zio.interop.reactivestreams._
 import zio.interop.catz._
@@ -32,6 +32,14 @@ def upload(stream: Stream[Throwable, Byte], contentLength: Long): Task[Completed
 def download(bucket: String, key: String) = {
   s3Client.download(bucket, key)
     .map(_.toZIOStream().map(_.get())) //Publisher[ByteBuffer] to Stream[ThrowableByte]
+}
+
+def copy(sourceBucket: String, sourceKey: String, destinationBucket: String, destinationKey: String): Task[CompletedCopy] = {
+  s3Client.copy(sourceBucket, sourceKey, destinationBucket, destinationKey)
+}
+
+def headObject(bucket: String, key: String): Task[HeadObjectResponse] = {
+  s3Client.headObject(bucket, key)
 }
 
 ```
