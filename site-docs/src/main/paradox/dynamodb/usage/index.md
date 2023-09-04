@@ -48,8 +48,6 @@ The method will return a list of items of type `T`
 
 The `queryItems` method takes a table name, a global secondary index name and a Scanamo filter query. The query is converted to a Scanamo `RequestCondition` using implicits in the companion object.
 
-See the [Zio](zio.md) and [Fs2](fs2.md) pages for examples.
-
 
 @@@ index
 
