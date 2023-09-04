@@ -21,6 +21,7 @@ import java.util
 import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
+import scala.util.Try
 
 class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrivenPropertyChecks {
   case class Pk(mockPrimaryKeyName: String)
@@ -408,19 +409,12 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
   }
 
   "queryItems" should "return the correct value if attributeName is valid" in {
-    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val items = Map(
-      "mockAttribute" -> AttributeValue.builder().s("mockAttributeValue").build(),
-      "mockAttribute2" -> AttributeValue.builder().s("mockAttributeValue2").build()
-    ).asJava
-    val queryResponse = QueryResponse.builder
-      .items(items)
-      .build()
-    val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
+      "mockAttribute" -> "mockAttributeValue",
+      "mockAttribute2" -> "mockAttributeValue2"
+    )
 
-    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
-
+    val client = createDynamoClientFromItems(items)
     val queryItemsResponseF: IO[List[MockTwoAttributesRequest]] =
       client.queryItems[MockTwoAttributesRequest]("testTable", "indexName", "mockAttribute" > 0)
     val queryItemsResponse = queryItemsResponseF.unsafeRunSync()
@@ -430,19 +424,11 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
   }
 
   "queryItems" should "return an empty string if the dynamo doesn't return an value for an attribute" in {
-    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val items = Map(
-      "mockAttribute" -> AttributeValue.builder().s("mockAttributeValue").build(),
-      "invalidAttribute" -> AttributeValue.builder().s("mockAttributeValue").build()
-    ).asJava
-    val queryResponse = QueryResponse.builder
-      .items(items)
-      .build()
-    val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
-
-    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
-
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+      "mockAttribute" -> "mockAttributeValue",
+      "invalidAttribute" -> "mockAttributeValue"
+    )
+    val client = createDynamoClientFromItems(items)
 
     val queryItemsResponse = client
       .queryItems[MockTwoAttributesRequest](
@@ -458,18 +444,10 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
   }
 
   "queryItems" should "return an error if the value is of an unexpected type" in {
-    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val items = Map(
-      "mockAttribute" -> AttributeValue.builder().n("1").build()
-    ).asJava
-    val queryResponse = QueryResponse.builder
-      .items(items)
-      .build()
-    val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
-
-    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
-
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+      "mockAttribute" -> "1"
+    )
+    val client = createDynamoClientFromItems(items)
 
     val ex = intercept[Exception] {
       client
@@ -480,19 +458,11 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
   }
 
   "queryItems" should "return an error if there are nested field values missing" in {
-    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val items = Map(
-      "invalidAttribute" -> AttributeValue.builder().s("mockAttributeValue").build()
-    ).asJava
+      "invalidAttribute" -> "mockAttributeValue"
+    )
 
-    val queryResponse = QueryResponse.builder
-      .items(items)
-      .build()
-    val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
-
-    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
-
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = createDynamoClientFromItems(items)
 
     val ex = intercept[Exception] {
       client
@@ -519,4 +489,19 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
     ex.getMessage should be("Table name could not be found")
   }
 
+  private def createDynamoClientFromItems(itemMap: Map[String, String]): DADynamoDBClient[IO] = {
+    val items = itemMap.map { case (k, v) =>
+      val builder = AttributeValue.builder()
+      val attributeValue = if (Try(v.toInt).isSuccess) builder.n(v) else builder.s(v)
+      k -> attributeValue.build()
+    }.asJava
+    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+    val queryResponse = QueryResponse.builder
+      .items(items)
+      .build()
+    val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
+
+    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
+    new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+  }
 }
