@@ -8,16 +8,20 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor2}
 import org.scanamo.generic.auto._
+import org.scanamo.query.ConditionExpression._
+import org.scanamo.request.RequestCondition
+import org.scanamo.syntax._
 import org.scanamo.{DynamoReadError, DynamoValue}
 import software.amazon.awssdk.http.SdkHttpResponse
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
 import software.amazon.awssdk.services.dynamodb.model._
-import uk.gov.nationalarchives.DADynamoDBClient.DynamoDbRequest
+import uk.gov.nationalarchives.DADynamoDBClient._
 
 import java.util
 import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
+import scala.util.Try
 
 class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrivenPropertyChecks {
   case class Pk(mockPrimaryKeyName: String)
@@ -203,7 +207,7 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val dynamoDbRequest =
-      DynamoDbRequest(
+      DADynamoDbRequest(
         "mockTableName",
         Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
         Map("mockAttribute" -> Some(AttributeValue.builder().s("newMockItemValue").build()))
@@ -237,7 +241,7 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val dynamoDbRequest =
-      DynamoDbRequest(
+      DADynamoDbRequest(
         "mockTableName",
         Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
         Map("mockAttribute" -> Some(AttributeValue.builder().s("newMockItemValue").build()))
@@ -256,7 +260,7 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val dynamoDbRequest =
-      DynamoDbRequest(
+      DADynamoDbRequest(
         "tableNameThatDoesNotExist",
         Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
         Map("mockAttribute" -> Some(AttributeValue.builder().s("newMockItemValue").build()))
@@ -347,4 +351,157 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
     ex.getMessage should equal("Error writing to dynamo")
   }
 
+  val queryTable: TableFor2[RequestCondition, FieldName] = Table(
+    ("query", "expectedQuery"),
+    ("testAttribute" === "testValue", "testAttribute = AttributeValue(S=testValue)"),
+    (
+      "testAttribute" === "testValue" and "testAttribute2" === "testValue2",
+      "testAttribute = AttributeValue(S=testValue) AND testAttribute2 = AttributeValue(S=testValue)2"
+    ),
+    (
+      "testAttribute" === "testValue" or "testNumber" < 5,
+      "(testAttribute = AttributeValue(S=testValue) OR testNumber < AttributeValue(N=5))"
+    ),
+    ("testNumber" > 6 or "testNumber2" < 5, "(testNumber > AttributeValue(N=6) OR testNumber2 < AttributeValue(N=5))"),
+    (
+      "testNumber" > 0 and "testNumber2" < 3,
+      "(testNumber > AttributeValue(N=0) AND testNumber2 < AttributeValue(N=3))"
+    ),
+    (
+      "testAttribute" < 0 and ("beginsWithAttribute" beginsWith 3),
+      "(testAttribute < AttributeValue(N=0) AND begins_with(beginsWithAttribute, AttributeValue(N=3)))"
+    )
+  )
+
+  forAll(queryTable) { (query, expectedQuery) =>
+    "queryItems" should s"send the correct $expectedQuery to the QueryRequest" in {
+      val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+      val queryRequestCaptor: ArgumentCaptor[QueryRequest] = ArgumentCaptor.forClass(classOf[QueryRequest])
+      val items = util.Collections.emptyMap[String, AttributeValue]()
+      val queryResponse = QueryResponse.builder
+        .items(items)
+        .build()
+
+      val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
+
+      when(mockDynamoDbAsyncClient.query(queryRequestCaptor.capture())).thenReturn(clientQueryResponseInCf)
+
+      val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+
+      client.queryItems[MockSingleAttributeRequest]("testTable", "indexName", query).unsafeRunSync()
+
+      val queryRequestValue = queryRequestCaptor.getValue
+
+      val attributeNames = queryRequestValue.expressionAttributeNames()
+      val keyConditionExpressionKeysReplaced =
+        attributeNames.asScala.foldLeft(queryRequestValue.keyConditionExpression()) {
+          (keyConditionExpression, attributeNames) =>
+            keyConditionExpression.replaceAll(attributeNames._1, attributeNames._2)
+        }
+      val keyConditionExpressionValuesReplaced =
+        queryRequestValue.expressionAttributeValues.asScala.foldLeft(keyConditionExpressionKeysReplaced) {
+          (keyConditionExpression, expressionValues) =>
+            keyConditionExpression.replaceAll(expressionValues._1, expressionValues._2.toString)
+        }
+      keyConditionExpressionValuesReplaced should equal(expectedQuery)
+      queryRequestValue.indexName() should equal("indexName")
+    }
+  }
+
+  "queryItems" should "return the correct value if attributeName is valid" in {
+    val items = Map(
+      "mockAttribute" -> "mockAttributeValue",
+      "mockAttribute2" -> "mockAttributeValue2"
+    )
+
+    val client = createDynamoClientFromItems(items)
+    val queryItemsResponseF: IO[List[MockTwoAttributesRequest]] =
+      client.queryItems[MockTwoAttributesRequest]("testTable", "indexName", "mockAttribute" > 0)
+    val queryItemsResponse = queryItemsResponseF.unsafeRunSync()
+
+    queryItemsResponse.head.mockAttribute should equal("mockAttributeValue")
+    queryItemsResponse.head.mockAttribute2 should equal("mockAttributeValue2")
+  }
+
+  "queryItems" should "return an empty string if the dynamo doesn't return an value for an attribute" in {
+    val items = Map(
+      "mockAttribute" -> "mockAttributeValue",
+      "invalidAttribute" -> "mockAttributeValue"
+    )
+    val client = createDynamoClientFromItems(items)
+
+    val queryItemsResponse = client
+      .queryItems[MockTwoAttributesRequest](
+        "testTable",
+        "indexName",
+        "mockAttribute" === "mockAttributeValue" and "asdasd" === ""
+      )
+      .unsafeRunSync()
+
+    queryItemsResponse.head.mockAttribute should equal("mockAttributeValue")
+    queryItemsResponse.head.mockAttribute2 should equal("")
+
+  }
+
+  "queryItems" should "return an error if the value is of an unexpected type" in {
+    val items = Map(
+      "mockAttribute" -> "1"
+    )
+    val client = createDynamoClientFromItems(items)
+
+    val ex = intercept[Exception] {
+      client
+        .queryItems[MockSingleAttributeRequest]("testTable", "indexName", "mockAttribute" === "mockAttributeValue")
+        .unsafeRunSync()
+    }
+    ex.getMessage should equal("'mockAttribute': not of type: 'S' was 'DynNum(1)'")
+  }
+
+  "queryItems" should "return an error if there are nested field values missing" in {
+    val items = Map(
+      "invalidAttribute" -> "mockAttributeValue"
+    )
+
+    val client = createDynamoClientFromItems(items)
+
+    val ex = intercept[Exception] {
+      client
+        .queryItems[MockNestedRequest]("testTable", "indexName", "mockAttribute" === "mockAttributeValue")
+        .unsafeRunSync()
+    }
+    ex.getMessage should equal("'mockSingleAttributeResponse': missing")
+  }
+
+  "queryItems" should "return an error if the client does" in {
+    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+
+    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenThrow(
+      ResourceNotFoundException.builder.message("Table name could not be found").build()
+    )
+
+    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+
+    val ex = intercept[Exception] {
+      client
+        .queryItems[MockNestedRequest]("testTable", "indexName", "mockAttribute" === "mockAttributeValue")
+        .unsafeRunSync()
+    }
+    ex.getMessage should be("Table name could not be found")
+  }
+
+  private def createDynamoClientFromItems(itemMap: Map[String, String]): DADynamoDBClient[IO] = {
+    val items = itemMap.map { case (k, v) =>
+      val builder = AttributeValue.builder()
+      val attributeValue = if (Try(v.toInt).isSuccess) builder.n(v) else builder.s(v)
+      k -> attributeValue.build()
+    }.asJava
+    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+    val queryResponse = QueryResponse.builder
+      .items(items)
+      .build()
+    val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
+
+    when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
+    new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+  }
 }
