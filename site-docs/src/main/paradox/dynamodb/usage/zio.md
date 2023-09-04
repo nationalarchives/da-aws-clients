@@ -27,7 +27,7 @@ import uk.gov.nationalarchives.DADynamoDBClient._ //Implicits to convert the que
 
 val zioClient = DADynamoDBClient[Task]()
 
-case class PrimaryKey(id: String)
+case class PartitionKey(id: String)
 
 case class GetItemsResponse(attributeName: String, attributeName2: String)
 
@@ -37,26 +37,27 @@ case class WriteItemsRequest(attributeName: String, writeItemsNestedRequest: Wri
 
 case class DynamoTable(batchId: String, parentPath: String)
 
-def getItemsExample(tableName: String, primaryKeyValue: String): Task[List[GetItemsResponse]] = {
-  val primaryKey = PrimaryKey(primaryKeyValue)
-  fs2Client.getItems[GetItemsResponse, PrimaryKey](dynamoDbRequest)
+def getItemsExample(tableName: String, partitionKeyValue1: String, partitionKeyValue2: String): Task[List[GetItemsResponse]] = {
+  val partitionKey1 = PartitionKey(partitionKeyValue1)
+  val partitionKey2 = PartitionKey(partitionKeyValue2)
+  val partitionKeys = List(partitionKey1, partitionKey2)
+  zioClient.getItems[GetItemsResponse, PartitionKey](partitionKeys, tableName)
 }
-
 def writeItemsExample(tableName: String): Task[BatchWriteItemResponse] = {
   val writeItemsRequest = List(WriteItemsRequest("attributeValue", WriteItemsNestedRequest("attributeValue2")))
-  fs2Client.writeItems(tableName, writeItemsRequest)
+  zioClient.writeItems(tableName, writeItemsRequest)
 }
 
-def updateAttributeValueSetUpExample(tableName: String, primaryKeyName: String, primaryKeyValue: String, attributeName: String,
+def updateAttributeValueSetUpExample(tableName: String, partitionKeyName: String, partitionKeyValue: String, attributeName: String,
                                      attributeName2: String, newAttributeValue: String, newAttributeValue2: String): Task[Int] = {
-  val primaryKeyAttribute = AttributeValue
+  val partitionKeyAttribute = AttributeValue
     .builder()
-    .s(primaryKeyValue) // '.s' for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail
+    .s(partitionKeyValue) // '.s' for String type; methods for other types can be found here https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/dynamodb/model/AttributeValue.html#method-detail
     .build()
 
   val dynamoDbRequest = DynamoDbRequest(
     tableName,
-    Map(primaryKeyName -> primaryKeyAttribute),
+    Map(partitionKeyName -> partitionKeyAttribute),
     Map(
       attributeName -> Some(AttributeValue.builder().s(newAttributeValue).build()),
       attributeName2 -> Some(AttributeValue.builder().s(newAttributeValue2).build())
