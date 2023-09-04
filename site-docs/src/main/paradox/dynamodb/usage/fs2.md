@@ -27,9 +27,11 @@ case class WriteItemsNestedRequest(attributeName2: String)
 
 case class WriteItemsRequest(attributeName: String, writeItemsNestedRequest: WriteItemsNestedRequest)
 
-def getItemsExample(tableName: String, primaryKeyValue: String): IO[List[GetItemsResponse]] = {
-  val primaryKey = PrimaryKey(primaryKeyValue)
-  fs2Client.getItems[GetItemsResponse, PrimaryKey](dynamoDbRequest)
+def getItemsExample(tableName: String, primaryKeyValue1: String, primaryKeyValue2: String): IO[List[GetItemsResponse]] = {
+  val primaryKey1 = PrimaryKey(primaryKeyValue1)
+  val primaryKey2 = PrimaryKey(primaryKeyValue2)
+  val primaryKeys = List(primaryKey1, primaryKey2)
+  fs2Client.getItems[GetItemsResponse, PrimaryKey](primaryKeys, tableName)
 }
 
 def writeItemsExample(tableName: String): IO[BatchWriteItemResponse] = {
