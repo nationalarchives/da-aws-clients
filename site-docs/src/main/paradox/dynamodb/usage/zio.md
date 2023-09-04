@@ -37,9 +37,11 @@ case class WriteItemsRequest(attributeName: String, writeItemsNestedRequest: Wri
 
 case class DynamoTable(batchId: String, parentPath: String)
 
-def getItemsExample(tableName: String, primaryKeyValue: String): Task[List[GetItemsResponse]] = {
-  val primaryKey = PrimaryKey(primaryKeyValue)
-  fs2Client.getItems[GetItemsResponse, PrimaryKey](dynamoDbRequest)
+def getItemsExample(tableName: String, primaryKeyValue1: String, primaryKeyValue2: String): Task[List[GetItemsResponse]] = {
+  val primaryKey1 = PrimaryKey(primaryKeyValue1)
+  val primaryKey2 = PrimaryKey(primaryKeyValue2)
+  val primaryKeys = List(primaryKey1, primaryKey2)
+  fs2Client.getItems[GetItemsResponse, PrimaryKey](primaryKeys, tableName)
 }
 
 def writeItemsExample(tableName: String): Task[BatchWriteItemResponse] = {
