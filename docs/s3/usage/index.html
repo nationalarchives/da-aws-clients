@@ -31,7 +31,7 @@
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.17*
+0.1.18*
 </div>
 </div>
 <div class="nav-toc">
@@ -92,7 +92,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.17*
+0.1.18*
 </div>
 </div>
 <div class="nav-toc">
@@ -153,13 +153,17 @@ val clientWithCustom = new DAS3Client(customTransferManager)
 
 val clientWithDefault = DAS3Client()
 </code></pre>
-<p>The client exposes two methods:</p>
+<p>The client exposes four methods:</p>
 <pre class="prettyprint"><code class="language-scala">def upload(bucket: String, key: String, contentLength: Long, publisher: Publisher[ByteBuffer]): F[CompletedUpload]
 
 def download(bucket: String, key: String): F[Publisher[ByteBuffer]]
+
+def copy(sourceBucket: String, sourceKey: String, destinationBucket: String, destinationKey: String ): F[CompletedCopy]
+
+def headObject(bucket: String, key: String): F[HeadObjectResponse]
 </code></pre>
-<p>Both methods stream the data using the Java Reactive streams standard. It is possible to work directly with the <code>Publisher</code> objects, but it should be easier to wrap them in a streaming library. There are examples for both Zio and Fs2.</p>
-<p>The method takes a content length because it&rsquo;s not currently possible to send a stream of arbitrary length to S3. There is an <a href="https://github.com/aws/aws-sdk-java-v2/issues/139">open GitHub issue</a> with <a href="https://github.com/awslabs/aws-c-s3/pull/285">associated pull request</a> which should fix this soon but until then, we need to pass this in.</p>
+<p>The upload and download methods stream the data using the Java Reactive streams standard. It is possible to work directly with the <code>Publisher</code> objects, but it should be easier to wrap them in a streaming library. There are examples for both Zio and Fs2.</p>
+<p>The upload method takes a content length because it&rsquo;s not currently possible to send a stream of arbitrary length to S3. There is an <a href="https://github.com/aws/aws-sdk-java-v2/issues/139">open GitHub issue</a> with <a href="https://github.com/awslabs/aws-c-s3/pull/285">associated pull request</a> which should fix this soon but until then, we need to pass this in.</p>
 <div class="nav-next">
 <p><strong>Next:</strong> <a href="../../s3/usage/zio.html">Use with Zio</a></p>
 </div>
@@ -227,7 +231,7 @@ def download(bucket: String, key: String): F[Publisher[ByteBuffer]]
 <script type="text/javascript" src="../../lib/prettify/prettify.js"></script>
 <script type="text/javascript" src="../../lib/prettify/lang-scala.js"></script>
 <script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
-<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.17-SNAPSHOT', '')});</script>
+<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.18-SNAPSHOT', '')});</script>
 
 
 </html>
