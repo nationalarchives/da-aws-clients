@@ -154,33 +154,57 @@ val clientWithCustom = new DADynamoDBClient(dynamoDbAsyncClient)
 val clientWithDefault = DADynamoDBClient()
 </code></pre>
 <p>The client exposes four methods:</p>
-<pre class="prettyprint"><code class="language-scala">def getItems[T &lt;: Product, K &lt;: Product](keys: List[K], tableName: String)(implicit returnFormat: DynamoFormat[T], keyFormat: DynamoFormat[K]): F[List[T]]
+<pre class="prettyprint"><code class="language-scala">def writeItems[T &lt;: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
+
+def getItems[T &lt;: Product, K &lt;: Product](keys: List[K], tableName: String)(implicit returnFormat: DynamoFormat[T], keyFormat: DynamoFormat[K]): F[List[T]]
 
 def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int]
 
-def writeItems[T &lt;: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
-
 def queryItems[U &lt;: Product](tableName: String, gsiName: String, requestCondition: RequestCondition)(implicit returnTypeFormat: DynamoFormat[U]): F[List[U]]
 </code></pre>
-<p>The <code>updateAttributeValues</code> method takes a dynamoDbRequest Case Class:</p>
-<pre class="prettyprint"><code class="language-scala">  case class DynamoDbRequest(tableName: String,
-                             primaryKeyAndItsValue: Map[String, AttributeValue],
+<ol>
+  <li>
+    <p>The <code>writeItems</code> method takes a table name of type <code>String</code> and a list of case classes of type <code>T</code></p>
+    <ol>
+      <li>If, for example, the table has an attribute called &ldquo;name&rdquo;, of type String, the case class would be <code>Items(name: String)</code></li>
+    </ol>
+  </li>
+  <li>
+    <p>The <code>getItems</code> method takes a table name and a list of case classes of type <code>K</code> (the case class for the partition key should match the partition key of the dynamo table.)</p>
+    <ol>
+      <li>If, for example, the table has a partition key called &ldquo;id&rdquo;, of type String, the case class would be <code>PartitionKey(id: String)</code></li>
+      <li>If, for example, there is a composite key of &ldquo;id&rdquo;, of type String and &ldquo;index&rdquo; of type number, the case class would be <code>PartitionKey(id: String, index: Long)</code></li>
+      <li>If, for example, there is a possibility that an attribute does not exist, the attribute should be an Option; the case class would be <code>PartitionKey(id: String, name: Option[String])</code></li>
+    </ol>
+  </li>
+</ol>
+<p>The method will return a list of items of type <code>T</code> (same type as the <code>items</code> passed into the <code>.writeItems</code> method)</p>
+<ol>
+  <li>The <code>updateAttributeValues</code> method takes a dynamoDbRequest Case Class:
+    <pre class="prettyprint"><code class="language-scala">  case class DynamoDbRequest(tableName: String,
+                             partitionKeyAndItsValue: Map[String, AttributeValue],
                              attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]])
 </code></pre>
-<p>consisting of:</p>
+    <p>consisting of:</p>
+  </li>
+</ol>
 <ul>
   <li>tableName - the DynamoDB table you want to make the edits in</li>
-  <li>primaryKeyAndItsValue - the primary key and the value to filter it down</li>
-  <li>you can use the .builder and pass the value to the &lsquo;type&rsquo; method (&lsquo;.s&rsquo;, &lsquo;.b&rsquo;, &lsquo;.n&rsquo; etc)</li>
-  <li><em>Warning</em> adding a value that isn&rsquo;t already present in the table will cause DynamoDb to add another row so watch out for misspellings</li>
-  <li>attributeNamesAndValuesToUpdate - the key = attribute name you want the value of; the value = new value you want to take place of the current one</li>
-  <li>if you are using the .getAttributeValues method, you can set the value to None</li>
+  <li>partitionKeyAndItsValue - the partition key and the value to filter it down
+    <ul>
+      <li>you can use the .builder and pass the value to the &lsquo;type&rsquo; method (&lsquo;.s&rsquo;, &lsquo;.b&rsquo;, &lsquo;.n&rsquo; etc)</li>
+      <li><em>Warning</em> adding a value that isn&rsquo;t already present in the table will cause DynamoDb to add another row so watch out for misspellings</li>
+    </ul>
+  </li>
+  <li>attributeNamesAndValuesToUpdate - the key = attribute name you want the value of; the value = new value you want to take place of the current one
+    <ul>
+      <li>if you are using the .getAttributeValues method, you can set the value to None</li>
+    </ul>
+  </li>
 </ul>
-<p>The <code>getItems</code> method takes a table name and a list of case classes of type <code>K</code></p>
-<p>The case class for the primary key should match the primary key of the dynamo table. </p>
-<p>If, for example, the table has a primary key called &ldquo;id&rdquo;, of type String, the case class would be <code>PrimaryKey(id: String)</code> If, for example, there is a composite key of &ldquo;id&rdquo;, of type String and &ldquo;index&rdquo; of type number, the case class would be <code>PrimaryKey(id: String, index: Long)</code></p>
-<p>The method will return a list of items of type <code>T</code></p>
-<p>The <code>queryItems</code> method takes a table name, a global secondary index name and a Scanamo filter query. The query is converted to a Scanamo <code>RequestCondition</code> using implicits in the companion object.</p>
+<ol>
+  <li>The <code>queryItems</code> method takes a table name of type <code>String</code>, a global secondary index name and a Scanamo filter query. The query is converted to a Scanamo <code>RequestCondition</code> using implicits in the companion object.</li>
+</ol>
 <div class="nav-next">
 <p><strong>Next:</strong> <a href="../../dynamodb/usage/zio.html">Use with Zio</a></p>
 </div>
