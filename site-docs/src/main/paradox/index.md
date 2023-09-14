@@ -9,6 +9,7 @@ View the [Scaladoc](api/uk/gov/nationalarchives/index.html)
 @@@ index
 
 * [DynamoDB Client Usage](dynamodb/usage/index.md)
+* [EventBridge Client Usage](eventbridge/usage/index.md)
 * [S3 Client Usage](s3/usage/index.md)
 * [SFN Client Usage](sfn/usage/index.md)
 * [SNS Client Usage](sns/usage/index.md)
