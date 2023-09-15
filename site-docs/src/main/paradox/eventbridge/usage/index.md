@@ -18,16 +18,6 @@ def publishEventToEventBridge[T <: Product](sourceId: String, detailType: String
 The message takes a case class of type `T` which is deserialised to json and sent as the event detail.
 You need an implicit circe encoder to deserialise the case class.
 
-There is also an implicit class in the companion object which adds a `sendToSlack` extension method to the log4cats `SelfAwareStructuredLogger[F]`
-
-```
-implicit class EventBridgeSlf4jLoggerExtensions[F[_] : Async](logger: SelfAwareStructuredLogger[F])(implicit val detailType: DetailType, client: DAEventBridgeClient[F]) {
-    def sendToSlack(messageString: String): F[Unit]
-}
-```
-This passes an event to EventBridge with a static source the implicit `detailType` from the class and a message string.
-You will need an EventBridge rule to process these. There is [an example here](https://github.com/nationalarchives/dr2-terraform-environments/blob/main/common.tf#L214).
-
 @@@ index
 
 * [Zio](zio.md)
