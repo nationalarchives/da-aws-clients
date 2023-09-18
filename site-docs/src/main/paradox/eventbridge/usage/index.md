@@ -12,11 +12,11 @@ val clientWithDefault = DAEventBridgeClient()
 The client exposes one method:
 
 ```scala
-def publishEventToEventBridge[T <: Product](sourceId: String, detailType: String, detail: T)(implicit enc: Encoder[T]): F[PutEventsResponse]
+def publishEventToEventBridge[T](sourceId: String, detailType: String, detail: T)(implicit enc: Encoder[T]): F[PutEventsResponse]
 ```
 
-The message takes a case class of type `T` which is deserialised to json and sent as the event detail.
-You need an implicit circe encoder to deserialise the case class.
+The message takes an object of type `T` which is deserialised to json and sent as the event detail.
+You need an implicit circe encoder to deserialise the object.
 
 @@@ index
 
