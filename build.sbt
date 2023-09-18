@@ -8,7 +8,7 @@ lazy val root = (project in file("."))
     name := "da-aws-clients",
     publish / skip := true
   ).settings(commonSettings)
-  .aggregate(sqs, sns, s3, dynamoDb, sfn)
+  .aggregate(sqs, sns, s3, dynamoDb, eventBridge, sfn)
 
 
 lazy val commonSettings = Seq(
@@ -71,6 +71,16 @@ lazy val dynamoDb = (project in file("dynamodb"))
     scanamo
   )
 )
+
+lazy val eventBridge = (project in file("eventbridge"))
+  .settings(commonSettings).settings(
+    name:= "da-eventbridge-client",
+    description := "A project containing useful methods for interacting with EventBridge",
+    libraryDependencies ++= Seq(
+      log4Cats % Provided,
+      eventBridgeSdk
+    )
+  )
 
 lazy val s3 = (project in file("s3"))
   .settings(commonSettings).settings(
