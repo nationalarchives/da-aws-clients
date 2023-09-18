@@ -6,7 +6,7 @@ object Dependencies {
 
   lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.21.17"
   lazy val catsCore = "org.typelevel" %% "cats-core" % "2.9.0"
-  lazy val catsEffect = "org.typelevel" %% "cats-effect" % "3.5.0"
+  lazy val catsEffect = "org.typelevel" %% "cats-effect" % "3.5.1"
   lazy val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
   lazy val circe = "io.circe" %% "circe-core" % circeVersion
   lazy val dynamoDB = "software.amazon.awssdk" % "dynamodb" % awsSdkVersion
