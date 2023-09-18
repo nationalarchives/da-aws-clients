@@ -1,15 +1,15 @@
 import Dependencies.*
 import sbtrelease.ReleaseStateTransformations.*
 
-ThisBuild / scalaVersion     := "2.13.10"
+ThisBuild / scalaVersion := "2.13.10"
 
 lazy val root = (project in file("."))
   .settings(
     name := "da-aws-clients",
     publish / skip := true
-  ).settings(commonSettings)
+  )
+  .settings(commonSettings)
   .aggregate(sqs, sns, s3, dynamoDb, eventBridge, sfn)
-
 
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
@@ -18,12 +18,11 @@ lazy val commonSettings = Seq(
     circe,
     circeGeneric,
     mockito % Test,
-    scalaTest % Test,
+    scalaTest % Test
   ),
   scalaVersion := "2.13.10",
   version := version.value,
   organization := "uk.gov.nationalarchives",
-
   scmInfo := Some(
     ScmInfo(
       url("https://github.com/nationalarchives/da-aws-clients"),
@@ -38,14 +37,11 @@ lazy val commonSettings = Seq(
       url = url("https://github.com/nationalarchives/da-aws-clients")
     )
   ),
-
   licenses := List("MIT" -> new URL("https://choosealicense.com/licenses/mit/")),
   homepage := Some(url("https://github.com/nationalarchives/da-aws-clients")),
-
   useGpgPinentry := true,
   publishTo := sonatypePublishToBundle.value,
   publishMavenStyle := true,
-
   releaseProcess := Seq[ReleaseStep](
     checkSnapshotDependencies,
     inquireVersions,
@@ -63,18 +59,20 @@ lazy val commonSettings = Seq(
 )
 
 lazy val dynamoDb = (project in file("dynamodb"))
-  .settings(commonSettings).settings(
-  name:= "da-dynamodb-client",
-  description := "A project containing useful methods for interacting with DynamoDb",
-  libraryDependencies ++= Seq(
-    dynamoDB,
-    scanamo
+  .settings(commonSettings)
+  .settings(
+    name := "da-dynamodb-client",
+    description := "A project containing useful methods for interacting with DynamoDb",
+    libraryDependencies ++= Seq(
+      dynamoDB,
+      scanamo
+    )
   )
-)
 
 lazy val eventBridge = (project in file("eventbridge"))
-  .settings(commonSettings).settings(
-    name:= "da-eventbridge-client",
+  .settings(commonSettings)
+  .settings(
+    name := "da-eventbridge-client",
     description := "A project containing useful methods for interacting with EventBridge",
     libraryDependencies ++= Seq(
       log4Cats % Provided,
@@ -83,37 +81,41 @@ lazy val eventBridge = (project in file("eventbridge"))
   )
 
 lazy val s3 = (project in file("s3"))
-  .settings(commonSettings).settings(
-  name:= "da-s3-client",
-  description := "A project containing useful methods for interacting with S3",
-  libraryDependencies ++= Seq(
-    s3Sdk,
-    transferManager,
-    awsCrt,
-    reactorTest % Test
+  .settings(commonSettings)
+  .settings(
+    name := "da-s3-client",
+    description := "A project containing useful methods for interacting with S3",
+    libraryDependencies ++= Seq(
+      s3Sdk,
+      transferManager,
+      awsCrt,
+      reactorTest % Test
+    )
   )
-)
 
 lazy val sqs = (project in file("sqs"))
-  .settings(commonSettings).settings(
-  name := "da-sqs-client",
-  description := "A project containing useful methods for interacting with SQS",
-  libraryDependencies ++= Seq(
-    sqsSdk
+  .settings(commonSettings)
+  .settings(
+    name := "da-sqs-client",
+    description := "A project containing useful methods for interacting with SQS",
+    libraryDependencies ++= Seq(
+      sqsSdk
+    )
   )
-)
 
 lazy val sns = (project in file("sns"))
-  .settings(commonSettings).settings(
-  name := "da-sns-client",
-  description := "A project containing useful methods for interacting with SNS",
-  libraryDependencies ++= Seq(
-    snsSdk
+  .settings(commonSettings)
+  .settings(
+    name := "da-sns-client",
+    description := "A project containing useful methods for interacting with SNS",
+    libraryDependencies ++= Seq(
+      snsSdk
+    )
   )
-)
 
 lazy val sfn = (project in file("sfn"))
-  .settings(commonSettings).settings(
+  .settings(commonSettings)
+  .settings(
     name := "da-sfn-client",
     description := "A project containing useful methods for interacting with step functions",
     libraryDependencies ++= Seq(
@@ -125,8 +127,9 @@ lazy val docs = (project in file("site-docs"))
   .settings(
     name := "da-aws-docs",
     description := "Markdown files which are published as GitHub pages documentation",
-    publish / skip := true,
-  ).enablePlugins(ParadoxSitePlugin, ScalaUnidocPlugin, SitePreviewPlugin)
+    publish / skip := true
+  )
+  .enablePlugins(ParadoxSitePlugin, ScalaUnidocPlugin, SitePreviewPlugin)
   .settings(
     paradoxProperties += ("version" -> (ThisBuild / version).value.split("-").head),
     paradoxTheme := Some(builtinParadoxTheme("generic")),
