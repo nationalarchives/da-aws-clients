@@ -2,7 +2,7 @@ import sbt._
 
 object Dependencies {
   private val awsSdkVersion = "2.20.69"
-  private val circeVersion = "0.14.5"
+  private val circeVersion = "0.14.6"
 
   lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.21.15"
   lazy val catsCore = "org.typelevel" %% "cats-core" % "2.9.0"
@@ -11,7 +11,7 @@ object Dependencies {
   lazy val circe = "io.circe" %% "circe-core" % circeVersion
   lazy val dynamoDB = "software.amazon.awssdk" % "dynamodb" % awsSdkVersion
   lazy val eventBridgeSdk = "software.amazon.awssdk" % "eventbridge" % awsSdkVersion
-  lazy val log4Cats =  "org.typelevel" %% "log4cats-slf4j"   % "2.6.0"
+  lazy val log4Cats = "org.typelevel" %% "log4cats-slf4j" % "2.6.0"
   lazy val mockito = "org.mockito" %% "mockito-scala" % "1.17.12"
   lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.5.6"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
