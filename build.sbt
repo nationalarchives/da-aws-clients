@@ -9,7 +9,7 @@ lazy val root = (project in file("."))
     publish / skip := true
   )
   .settings(commonSettings)
-  .aggregate(sqs, sns, s3, dynamoDb, eventBridge, sfn)
+  .aggregate(sqs, sns, s3, dynamoDb, eventBridge, sfn, secretsManager)
 
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
@@ -75,7 +75,6 @@ lazy val eventBridge = (project in file("eventbridge"))
     name := "da-eventbridge-client",
     description := "A project containing useful methods for interacting with EventBridge",
     libraryDependencies ++= Seq(
-      log4Cats % Provided,
       eventBridgeSdk
     )
   )
@@ -120,6 +119,17 @@ lazy val sfn = (project in file("sfn"))
     description := "A project containing useful methods for interacting with step functions",
     libraryDependencies ++= Seq(
       sfnSdk
+    )
+  )
+
+lazy val secretsManager = (project in file("secretsmanager"))
+  .settings(commonSettings)
+  .settings(
+    name := "da-secretsmanager-client",
+    description := "A project containing useful methods for interacting with secrets manager",
+    libraryDependencies ++= Seq(
+      secretsManagerSdk,
+      circeParser
     )
   )
 
