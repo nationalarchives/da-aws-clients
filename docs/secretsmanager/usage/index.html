@@ -2,7 +2,7 @@
 <html class="no-js" lang="en">
 
 <head>
-<title>Use with Fs2 · AWS Clients</title>
+<title>Secrets Manager Client · AWS Clients</title>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="description" content='Markdown files which are published as GitHub pages documentation'/>
@@ -49,9 +49,9 @@
   <li><a href="../../s3/usage/index.html" class="page">S3 Client</a>
   <ul>
     <li><a href="../../s3/usage/zio.html" class="page">Use with Zio</a></li>
-    <li><a href="../../s3/usage/fs2.html" class="active page">Use with Fs2</a></li>
+    <li><a href="../../s3/usage/fs2.html" class="page">Use with Fs2</a></li>
   </ul></li>
-  <li><a href="../../secretsmanager/usage/index.html" class="page">Secrets Manager Client</a>
+  <li><a href="../../secretsmanager/usage/index.html" class="active page">Secrets Manager Client</a>
   <ul>
     <li><a href="../../secretsmanager/usage/zio.html" class="page">Use with ZIO</a></li>
     <li><a href="../../secretsmanager/usage/fs2.html" class="page">Use with Cats Effect</a></li>
@@ -120,9 +120,9 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
   <li><a href="../../s3/usage/index.html" class="page">S3 Client</a>
   <ul>
     <li><a href="../../s3/usage/zio.html" class="page">Use with Zio</a></li>
-    <li><a href="../../s3/usage/fs2.html" class="active page">Use with Fs2</a></li>
+    <li><a href="../../s3/usage/fs2.html" class="page">Use with Fs2</a></li>
   </ul></li>
-  <li><a href="../../secretsmanager/usage/index.html" class="page">Secrets Manager Client</a>
+  <li><a href="../../secretsmanager/usage/index.html" class="active page">Secrets Manager Client</a>
   <ul>
     <li><a href="../../secretsmanager/usage/zio.html" class="page">Use with ZIO</a></li>
     <li><a href="../../secretsmanager/usage/fs2.html" class="page">Use with Cats Effect</a></li>
@@ -158,8 +158,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <div class="nav-breadcrumbs">
 <ul>
   <li><a href="../../index.html">AWS Clients</a></li>
-  <li><a href="../../s3/usage/index.html">S3 Client</a></li>
-  <li>Use with Fs2</li>
+  <li>Secrets Manager Client</li>
 </ul>
 </div>
 </div>
@@ -167,73 +166,20 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 
 <div class="page-content row">
 <div class="small-12 large-9 column" id="docs">
-<h1><a href="#use-with-fs2" name="use-with-fs2" class="anchor"><span class="anchor-link"></span></a>Use with Fs2</h1>
-<h2><a href="#setup" name="setup" class="anchor"><span class="anchor-link"></span></a>Setup</h2>
-<p>You will need these dependencies:</p><dl class="dependency"><dt>sbt</dt><dd><pre class="prettyprint"><code class="language-scala">libraryDependencies ++= Seq(
-  "uk.gov.nationalarchives" %% "da-s3-client" % "0.1.25",
-  "co.fs2" %% "fs2-reactive-streams" % "3.7.0"
-)</code></pre></dd><dt>Maven</dt><dd><pre class="prettyprint"><code class="language-xml">&lt;dependencies&gt
-  &lt;dependency&gt;
-    &lt;groupId&gt;uk.gov.nationalarchives&lt;/groupId&gt;
-    &lt;artifactId&gt;da-s3-client_2.13&lt;/artifactId&gt;
-    &lt;version&gt;0.1.25&lt;/version&gt;
-  &lt;/dependency&gt
-  &lt;dependency&gt;
-    &lt;groupId&gt;co.fs2&lt;/groupId&gt;
-    &lt;artifactId&gt;fs2-reactive-streams_2.13&lt;/artifactId&gt;
-    &lt;version&gt;3.7.0&lt;/version&gt;
-  &lt;/dependency&gt
-&lt;/dependencies&gt;</code></pre></dd><dt>Gradle</dt><dd><pre class="prettyprint"><code class="language-gradle">dependencies {
-  implementation "uk.gov.nationalarchives:da-s3-client_2.13:0.1.25"
-  implementation "co.fs2:fs2-reactive-streams_2.13:3.7.0"
-}</code></pre></dd></dl>
-<h2><a href="#examples" name="examples" class="anchor"><span class="anchor-link"></span></a>Examples</h2>
-<pre class="prettyprint"><code class="language-scala">import cats.effect._
-import fs2.Stream
-import fs2.interop.reactivestreams._
-import software.amazon.awssdk.transfer.s3.model._
-import uk.gov.nationalarchives.DAS3Client
-
-val fs2Client = DAS3Client[IO, Stream[IO, Byte]]()
-
-def upload(s: Stream[IO, Byte], fileSize: Long): IO[CompletedUpload] = {
-  s.chunks.map(_.toByteBuffer).toUnicastPublisher.use { publisher =&gt;
-    fs2Client.upload(&quot;bucket&quot;, &quot;key&quot;, fileSize, publisher)
-  }
-}
-
-def download(bucket: String, key: String): IO[Stream[IO, Byte]] = {
-  fs2Client.download(bucket, key)
-    .map(_.toStreamBuffered[IO](1024 * 1024).map(_.get()))
-}
-
-def copy(sourceBucket: String, sourceKey: String, destinationBucket: String, destinationKey: String): IO[CompletedCopy] = {
-  fs2Client.copy(sourceBucket, sourceKey, destinationBucket, destinationKey)
-}
-
-def headObject(bucket: String, key: String): IO[HeadObjectResponse] = {
-  fs2Client.headObject(bucket, key)
-}
+<h1><a href="#secrets-manager-client" name="secrets-manager-client" class="anchor"><span class="anchor-link"></span></a>Secrets Manager Client</h1>
+<p>The client exposes six methods</p>
+<pre class="prettyprint"><code class="language-scala">def generateRandomPassword(passwordLength: Int = 15, excludeCharacters: String = &quot;\&#39;\&quot;\\&quot;): F[GetRandomPasswordResponse]
+def describeSecret(): F[DescribeSecretResponse]
+def getSecretValue[T](stage: Stage = Current)(implicit decoder: Decoder[T]): F[T]
+def getSecretValue[T](versionId: String, stage: Stage)(implicit decoder: Decoder[T]): F[T]
+def putSecretValue[T](secret: T, stage: Stage = Current, clientRequestToken: Option[String] = None)(implicit encoder: Encoder[T]): F[PutSecretValueResponse]
+def updateSecretVersionStage(moveToVersionId: String, removeFromVersionId: String, stage: Stage = Current): F[UpdateSecretVersionStageResponse]
 </code></pre>
 <div class="nav-next">
-<p><strong>Next:</strong> <a href="../../secretsmanager/usage/index.html">Secrets Manager Client</a></p>
+<p><strong>Next:</strong> <a href="../../secretsmanager/usage/zio.html">Use with ZIO</a></p>
 </div>
 </div>
 <div class="large-3 show-for-large column" data-sticky-container>
-<nav class="sidebar sticky" data-sticky data-anchor="docs" data-sticky-on="large">
-<div class="page-nav">
-<div class="nav-title">On this page:</div>
-<div class="nav-toc">
-<ul>
-  <li><a href="../../s3/usage/fs2.html#use-with-fs2" class="header">Use with Fs2</a>
-  <ul>
-    <li><a href="../../s3/usage/fs2.html#setup" class="header">Setup</a></li>
-    <li><a href="../../s3/usage/fs2.html#examples" class="header">Examples</a></li>
-  </ul></li>
-</ul>
-</div>
-</div>
-</nav>
 </div>
 </div>
 
