@@ -2,8 +2,7 @@ package uk.gov.nationalarchives
 
 import cats.effect.Async
 import io.circe.syntax.EncoderOps
-import io.circe.{Encoder, Json, Printer}
-import org.typelevel.log4cats.SelfAwareStructuredLogger
+import io.circe.{Encoder, Printer}
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
