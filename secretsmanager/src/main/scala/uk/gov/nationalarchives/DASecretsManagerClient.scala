@@ -34,7 +34,7 @@ class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsMana
     * @param passwordLength
     *   The length of the password. Defaults to 15
     * @param excludeCharacters
-    *   Characters to exclude from the password, defaults to ' and ""
+    *   Characters to exclude from the password, defaults to ' and "" and \
     * @return
     *   The randomly generated password wrapped with F[_]
     */
@@ -86,7 +86,7 @@ class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsMana
     * @param secret
     *   An object of type T. This will be deserialised to a string and passed to secrets manager
     * @param stage
-    *   The stage to put the value into
+    *   The stage to put the value into. The default is Current.
     * @param clientRequestToken
     *   An optional clientRequestToken
     * @param encoder

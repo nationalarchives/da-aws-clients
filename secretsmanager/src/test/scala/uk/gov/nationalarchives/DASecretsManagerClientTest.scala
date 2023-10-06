@@ -28,7 +28,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     reset(secretsManagerAsyncClient)
   }
 
-  "generateRandomPassword" should "generate a password with the defaults" in {
+  "generateRandomPassword" should "send a request to generate a password with the arguments passed in" in {
 
     val (client, randomPasswordRequestCaptor) =
       setupClientAndCaptors[GetRandomPasswordRequest, GetRandomPasswordResponse](
@@ -43,7 +43,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     randomPasswordRequest.excludeCharacters() should equal(";")
   }
 
-  "generateRandomPassword" should "generate a password with the arguments passed in" in {
+  "generateRandomPassword" should "send a request to generate a password with the defaults" in {
     val (client, randomPasswordRequestCaptor) =
       setupClientAndCaptors[GetRandomPasswordRequest, GetRandomPasswordResponse](
         secretsManagerAsyncClient.getRandomPassword,
@@ -68,7 +68,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
 
   }
 
-  "describeSecret" should "pass the correct arguments to secrets manager" in {
+  "describeSecret" should "pass the correct arguments to Secrets Manager" in {
     val mockResponse = DescribeSecretResponse.builder.name("secretName").build
     val (client, requestCaptor) =
       setupClientAndCaptors[DescribeSecretRequest, DescribeSecretResponse](
@@ -92,7 +92,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     ex.getMessage should equal("Error from client")
   }
 
-  "getSecretValue" should "pass the correct arguments to secrets manager if neither version id or stage are passed" in {
+  "getSecretValue" should "pass the correct arguments to Secrets Manager if neither version id or stage are passed" in {
     val mockResponse = GetSecretValueResponse.builder.secretString("""{"secret": "very-secret"}""").build
     val (client, requestCaptor) =
       setupClientAndCaptors[GetSecretValueRequest, GetSecretValueResponse](
@@ -106,7 +106,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     requestCaptor.getValue.versionId() should equal(null)
   }
 
-  "getSecretValue" should "pass the correct arguments to secrets manager if the stage is passed but the version id isn't" in {
+  "getSecretValue" should "pass the correct arguments to Secrets Manager if the stage is passed but the version id isn't" in {
     val mockResponse = GetSecretValueResponse.builder.secretString("""{"secret": "very-secret"}""").build
     val (client, requestCaptor) =
       setupClientAndCaptors[GetSecretValueRequest, GetSecretValueResponse](
@@ -120,7 +120,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     requestCaptor.getValue.versionId() should equal(null)
   }
 
-  "getSecretValue" should "pass the correct arguments to secrets manager if the stage and version id are passed" in {
+  "getSecretValue" should "pass the correct arguments to Secrets Manager if the stage and version id are passed" in {
     val mockResponse = GetSecretValueResponse.builder.secretString("""{"secret": "very-secret"}""").build
     val (client, requestCaptor) =
       setupClientAndCaptors[GetSecretValueRequest, GetSecretValueResponse](
@@ -134,7 +134,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     requestCaptor.getValue.versionId() should equal("VersionId")
   }
 
-  "getSecretValue" should "return an error if the secrets manager response doesn't match the provided type" in {
+  "getSecretValue" should "return an error if the Secrets Manager response doesn't match the provided type" in {
     val mockResponse = GetSecretValueResponse.builder.secretString("""{"secret": "very-secret"}""").build
     val (client, _) =
       setupClientAndCaptors[GetSecretValueRequest, GetSecretValueResponse](
@@ -158,7 +158,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     ex.getMessage should equal("Error from client")
   }
 
-  "putSecretValue" should "send the correct arguments to secrets manager if no stage or token are passed" in {
+  "putSecretValue" should "send the correct arguments to Secrets Manager if no stage or token are passed" in {
     val mockResponse = PutSecretValueResponse.builder.name("secretName").build()
     val (client, argumentCaptor) =
       setupClientAndCaptors[PutSecretValueRequest, PutSecretValueResponse](
@@ -171,7 +171,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     checkPutSecretValue(argumentCaptor)
   }
 
-  "putSecretValue" should "send the correct arguments to secrets manager if the stage is passed but not the token" in {
+  "putSecretValue" should "send the correct arguments to Secrets Manager if the stage is passed but not the token" in {
     val mockResponse = PutSecretValueResponse.builder.name("secretName").build()
     val (client, argumentCaptor) =
       setupClientAndCaptors[PutSecretValueRequest, PutSecretValueResponse](
@@ -184,7 +184,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     checkPutSecretValue(argumentCaptor, Pending)
   }
 
-  "putSecretValue" should "send the correct arguments to secrets manager if the token and stage are passed" in {
+  "putSecretValue" should "send the correct arguments to Secrets Manager if the token and stage are passed" in {
     val mockResponse = PutSecretValueResponse.builder.name("secretName").build()
     val (client, argumentCaptor) =
       setupClientAndCaptors[PutSecretValueRequest, PutSecretValueResponse](
@@ -209,7 +209,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     ex.getMessage should equal("Error from client")
   }
 
-  "updateSecretVersionStage" should "send the correct arguments to secrets manager if no stage is passed" in {
+  "updateSecretVersionStage" should "send the correct arguments to Secrets Manager if no stage is passed" in {
     val mockResponse = UpdateSecretVersionStageResponse.builder.name("secretName").build()
     val (client, argumentCaptor) =
       setupClientAndCaptors[UpdateSecretVersionStageRequest, UpdateSecretVersionStageResponse](
@@ -222,7 +222,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     checkUpdateSecretVersionResponse(argumentCaptor, Current)
   }
 
-  "updateSecretVersionStage" should "send the correct arguments to secrets manager if the stage is passed" in {
+  "updateSecretVersionStage" should "send the correct arguments to Secrets Manager if the stage is passed" in {
     val mockResponse = UpdateSecretVersionStageResponse.builder.name("secretName").build()
     val (client, argumentCaptor) =
       setupClientAndCaptors[UpdateSecretVersionStageRequest, UpdateSecretVersionStageResponse](
