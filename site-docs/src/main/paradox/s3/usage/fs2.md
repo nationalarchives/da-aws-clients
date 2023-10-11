@@ -36,4 +36,9 @@ def copy(sourceBucket: String, sourceKey: String, destinationBucket: String, des
 def headObject(bucket: String, key: String): IO[HeadObjectResponse] = {
   fs2Client.headObject(bucket, key)
 }
+
+def deleteObjects(bucket: String, keys: List[String]): IO[DeleteObjectsResponse] = {
+  fs2Client.deleteObjects(bucket, keys)
+}
+
 ```

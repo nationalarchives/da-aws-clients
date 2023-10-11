@@ -12,7 +12,9 @@ import software.amazon.awssdk.transfer.s3.S3TransferManager
 import software.amazon.awssdk.transfer.s3.model._
 
 import java.nio.ByteBuffer
+import java.util
 import java.util.concurrent.CompletableFuture
+import scala.jdk.CollectionConverters._
 
 /** An S3 client. It is written generically so can be used for any effect which has an Async instance. Requires an
   * implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -115,6 +117,23 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
       .key(key)
       .build
     asyncClient.headObject(headObjectRequest).liftF
+  }
+
+  /** @param bucket
+    *   The bucket to delete the objects from
+    * @param keys
+    *   The keys to delete from the bucket
+    * @return
+    *   The DeleteObjectsResponse from AWS wrapped in the F effect
+    */
+  def deleteObjects(bucket: String, keys: List[String]): F[DeleteObjectsResponse] = {
+    val objects: util.List[ObjectIdentifier] = keys.map(ObjectIdentifier.builder.key(_).build).asJava
+    val delete = Delete.builder.objects(objects).build
+    val request = DeleteObjectsRequest.builder
+      .bucket(bucket)
+      .delete(delete)
+      .build()
+    asyncClient.deleteObjects(request).liftF
   }
 
   private implicit class CompletableFutureUtils[T](completableFuture: CompletableFuture[T]) {

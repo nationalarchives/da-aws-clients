@@ -9,7 +9,7 @@ val clientWithCustom = new DAS3Client(customTransferManager)
 val clientWithDefault = DAS3Client()
 ```
 
-The client exposes four methods:
+The client exposes five methods:
 
 ```scala
 def upload(bucket: String, key: String, contentLength: Long, publisher: Publisher[ByteBuffer]): F[CompletedUpload]
@@ -19,6 +19,8 @@ def download(bucket: String, key: String): F[Publisher[ByteBuffer]]
 def copy(sourceBucket: String, sourceKey: String, destinationBucket: String, destinationKey: String ): F[CompletedCopy]
 
 def headObject(bucket: String, key: String): F[HeadObjectResponse]
+
+def deleteObjects(bucket: String, keys: List[String]): F[DeleteObjectsResponse]
 ```
 
 The upload and download methods stream the data using the Java Reactive streams standard. 

@@ -13,6 +13,9 @@ import software.amazon.awssdk.core.internal.async.ByteArrayAsyncRequestBody
 import software.amazon.awssdk.services.s3.S3AsyncClient
 import software.amazon.awssdk.services.s3.model.{
   CopyObjectResponse,
+  DeleteObjectsRequest,
+  DeleteObjectsResponse,
+  DeletedObject,
   GetObjectResponse,
   HeadObjectRequest,
   HeadObjectResponse,
@@ -26,6 +29,7 @@ import software.amazon.awssdk.transfer.s3.model._
 import java.nio.ByteBuffer
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
+import scala.jdk.CollectionConverters._
 
 class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
   type S3Download = DownloadRequest[ResponsePublisher[GetObjectResponse]]
@@ -182,9 +186,52 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     ex.getMessage should equal("Error calling head object")
   }
 
+  "delete" should "return the correct 'delete objects' response" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val deleteObjectsResponse = createDeleteObjectsResponse()
+    when(asyncClientMock.deleteObjects(any[DeleteObjectsRequest])).thenReturn(deleteObjectsResponse)
+
+    val client = DAS3Client[IO](asyncClientMock)
+    val response = client.deleteObjects("bucket", List("test")).unsafeRunSync()
+    response.deleted.get(0).key should equal("test")
+  }
+
+  "delete" should "call the async client deleteObjects with the correct arguments" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val deleteObjectsCaptor: ArgumentCaptor[DeleteObjectsRequest] =
+      ArgumentCaptor.forClass(classOf[DeleteObjectsRequest])
+    val deleteObjectsResponse = createDeleteObjectsResponse()
+    when(asyncClientMock.deleteObjects(deleteObjectsCaptor.capture())).thenReturn(deleteObjectsResponse)
+
+    val client = DAS3Client[IO](asyncClientMock)
+    client.deleteObjects("bucket", List("test")).unsafeRunSync()
+
+    val requestBody = deleteObjectsCaptor.getValue
+    requestBody.bucket() should equal("bucket")
+    requestBody.delete().objects().get(0).key() should equal("test")
+  }
+
+  "delete" should "return an error if the async client returns an error" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    when(asyncClientMock.deleteObjects(any[DeleteObjectsRequest]))
+      .thenThrow(new Exception("Error calling delete objects"))
+
+    val client = DAS3Client[IO](asyncClientMock)
+    val ex = intercept[Exception] {
+      client.deleteObjects("bucket", List("key")).unsafeRunSync()
+    }
+    ex.getMessage should equal("Error calling delete objects")
+  }
+
   private def createHeadObjectResponse(): CompletableFuture[HeadObjectResponse] = {
     val headObjectResponse = HeadObjectResponse.builder().contentLength(10).build
     CompletableFuture.completedFuture(headObjectResponse)
+  }
+
+  private def createDeleteObjectsResponse(): CompletableFuture[DeleteObjectsResponse] = {
+    val deletedObject = DeletedObject.builder.key("test").build
+    val deleteObjectsResponse = DeleteObjectsResponse.builder.deleted(List(deletedObject).asJava).build
+    CompletableFuture.completedFuture(deleteObjectsResponse)
   }
 
   private def createCopyCompletedResponse(): Copy = {
