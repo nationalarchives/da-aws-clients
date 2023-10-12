@@ -42,5 +42,9 @@ def headObject(bucket: String, key: String): Task[HeadObjectResponse] = {
   s3Client.headObject(bucket, key)
 }
 
+def deleteObjects(bucket: String, keys: List[String]): Task[DeleteObjectsResponse] = {
+  s3Client.deleteObjects(bucket, keys)
+}
+
 ```
 
