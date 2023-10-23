@@ -138,12 +138,11 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
 
   def listKeysWithCommonPrefixes(
       bucket: String,
-      keysPrefixedWith: String,
-      trimKeysAt1stOccurrenceOf: String = "/"
+      keysPrefixedWith: String
   ): F[SdkPublisher[String]] = {
     val listObjectsV2Request = ListObjectsV2Request.builder
       .bucket(bucket)
-      .delimiter(trimKeysAt1stOccurrenceOf)
+      .delimiter("/")
       .prefix(keysPrefixedWith)
       .build
 

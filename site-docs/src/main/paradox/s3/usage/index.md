@@ -22,7 +22,7 @@ def headObject(bucket: String, key: String): F[HeadObjectResponse]
 
 def deleteObjects(bucket: String, keys: List[String]): F[DeleteObjectsResponse]
 
-def listKeysWithCommonPrefixes(bucket: String, keysPrefixedWith: String, trimKeysAt1stOccurrenceOf: String="/"): F[SdkPublisher[String]]
+def listKeysWithCommonPrefixes(bucket: String, keysPrefixedWith: String): F[SdkPublisher[String]]
 ```
 
 The upload and download methods stream the data using the Java Reactive streams standard. 
@@ -39,9 +39,7 @@ string that these keys should be cut off at e.g. if the keys in the bucket are:
 `dir1/subdir1/fileName.txt`, `dir1/subdir1/fileName2.txt`, `dir1/subdir2/fileName.txt`, `dir1/subdir2/fileName2.txt`,
 `dir1/subdir3/fileName.txt`, `dir1/subdir3/fileName2.txt`,
 
-if you call the `listKeysWithCommonPrefixes` method with:
-- `keysPrefixedWith` set to `"dir1/"`
-- `trimKeysAt1stOccurrenceOf` set to/left at `"/"`
+if you call the `listKeysWithCommonPrefixes` method with `keysPrefixedWith` set to `"dir1/"`
 
 it will find all keys that start with `dir1/`, strip off everything after the first `/` (after the prefix) and
 deduplicate the values; therefore the results would be `["dir1/subdir1/", "dir1/subdir2/", "dir1/subdir3/"]`
