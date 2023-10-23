@@ -4,7 +4,7 @@ import cats.effect.Async
 import cats.implicits._
 import org.reactivestreams.Publisher
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
-import software.amazon.awssdk.core.async.{AsyncRequestBody, AsyncResponseTransformer}
+import software.amazon.awssdk.core.async.{AsyncRequestBody, AsyncResponseTransformer, SdkPublisher}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3AsyncClient
 import software.amazon.awssdk.services.s3.model._
@@ -134,6 +134,23 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
       .delete(delete)
       .build()
     asyncClient.deleteObjects(request).liftF
+  }
+
+  def listCommonPrefixes(
+      bucket: String,
+      keysPrefixedWith: String
+  ): F[SdkPublisher[String]] = {
+    val listObjectsV2Request = ListObjectsV2Request.builder
+      .bucket(bucket)
+      .delimiter("/")
+      .prefix(keysPrefixedWith)
+      .build
+
+    val keysThatHaveSamePrefix = asyncClient
+      .listObjectsV2Paginator(listObjectsV2Request)
+      .commonPrefixes()
+      .map(_.prefix())
+    Async[F].pure(keysThatHaveSamePrefix)
   }
 
   private implicit class CompletableFutureUtils[T](completableFuture: CompletableFuture[T]) {

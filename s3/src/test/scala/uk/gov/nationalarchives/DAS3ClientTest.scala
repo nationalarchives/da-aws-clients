@@ -8,19 +8,11 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
 import reactor.test.StepVerifier
 import software.amazon.awssdk.core.SdkResponse
-import software.amazon.awssdk.core.async.ResponsePublisher
+import software.amazon.awssdk.core.async.{ResponsePublisher, SdkPublisher}
 import software.amazon.awssdk.core.internal.async.ByteArrayAsyncRequestBody
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model.{
-  CopyObjectResponse,
-  DeleteObjectsRequest,
-  DeleteObjectsResponse,
-  DeletedObject,
-  GetObjectResponse,
-  HeadObjectRequest,
-  HeadObjectResponse,
-  PutObjectResponse
-}
+import software.amazon.awssdk.services.s3.model._
+import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Publisher
 import software.amazon.awssdk.transfer.s3.S3TransferManager
 import software.amazon.awssdk.transfer.s3.internal.model.{DefaultCopy, DefaultDownload, DefaultUpload}
 import software.amazon.awssdk.transfer.s3.internal.progress.{DefaultTransferProgress, DefaultTransferProgressSnapshot}
@@ -221,6 +213,66 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
       client.deleteObjects("bucket", List("key")).unsafeRunSync()
     }
     ex.getMessage should equal("Error calling delete objects")
+  }
+
+  "listCommonPrefixes" should "return a publisher with the expected common prefixes" in {
+    val asyncClientMock = mock[S3AsyncClient]
+
+    val listObjectsV2Request = ListObjectsV2Request.builder
+      .bucket("bucket")
+      .delimiter("/")
+      .prefix("prefix")
+      .build
+
+    val response =
+      ListObjectsV2Response.builder.commonPrefixes(CommonPrefix.builder.prefix("commonPrefix").build).build()
+    val listObjectsV2Publisher = new ListObjectsV2Publisher(asyncClientMock, listObjectsV2Request)
+
+    when(asyncClientMock.listObjectsV2(any[ListObjectsV2Request]))
+      .thenReturn(CompletableFuture.completedFuture(response))
+    when(asyncClientMock.listObjectsV2Paginator(any[ListObjectsV2Request])).thenReturn(listObjectsV2Publisher)
+    val client = DAS3Client[IO](asyncClientMock)
+    val publisher: SdkPublisher[String] = client.listCommonPrefixes("bucket", "keyPrefix/").unsafeRunSync()
+
+    StepVerifier
+      .create(publisher)
+      .expectNext("commonPrefix")
+      .verifyComplete()
+  }
+
+  "listCommonPrefixes" should "make a request to 'listCommonPrefixes' with the correct arguments" in {
+    val listObjectsV2PaginatorCaptor: ArgumentCaptor[ListObjectsV2Request] =
+      ArgumentCaptor.forClass(classOf[ListObjectsV2Request])
+    val asyncClientMock = mock[S3AsyncClient]
+    val listObjectsV2Request = ListObjectsV2Request.builder
+      .bucket("bucket")
+      .delimiter("/")
+      .prefix("prefix")
+      .build
+
+    val listObjectsV2Publisher = new ListObjectsV2Publisher(asyncClientMock, listObjectsV2Request)
+    when(asyncClientMock.listObjectsV2Paginator(listObjectsV2PaginatorCaptor.capture()))
+      .thenReturn(listObjectsV2Publisher)
+    val client = DAS3Client[IO](asyncClientMock)
+    client.listCommonPrefixes("bucket", "keyPrefix/").unsafeRunSync()
+
+    val listObjectsRequest = listObjectsV2PaginatorCaptor.getValue
+    listObjectsRequest.delimiter() should equal("/")
+    listObjectsRequest.prefix() should equal("keyPrefix/")
+    listObjectsRequest.bucket() should equal("bucket")
+  }
+
+  "listCommonPrefixes" should "return an error if the call to 'listObjectsV2Paginator' returns an error" in {
+    val asyncClientMock = mock[S3AsyncClient]
+
+    when(asyncClientMock.listObjectsV2Paginator(any[ListObjectsV2Request]))
+      .thenThrow(new Exception("Bucket does not exist"))
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val ex = intercept[Exception] {
+      client.listCommonPrefixes("bucket", "keyPrefix/").unsafeRunSync()
+    }
+    ex.getMessage should equal("Bucket does not exist")
   }
 
   private def createHeadObjectResponse(): CompletableFuture[HeadObjectResponse] = {
