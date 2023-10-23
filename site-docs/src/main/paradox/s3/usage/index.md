@@ -42,7 +42,9 @@ string that these keys should be cut off at e.g. if the keys in the bucket are:
 if you call the `listKeysWithCommonPrefixes` method with `keysPrefixedWith` set to `"dir1/"`
 
 it will find all keys that start with `dir1/`, strip off everything after the first `/` (after the prefix) and
-deduplicate the values; therefore the results would be `["dir1/subdir1/", "dir1/subdir2/", "dir1/subdir3/"]`
+deduplicate the values; therefore the results would be `["dir1/subdir1/", "dir1/subdir2/", "dir1/subdir3/"]`.
+
+If there are more than 1000 common prefixes, the method will deal with the pagination for you.
 
 @@@ index
 
