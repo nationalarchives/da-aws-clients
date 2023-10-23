@@ -216,9 +216,6 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
   }
 
   "listCommonPrefixes" should "return a publisher with the expected common prefixes" in {
-    // You can't mock/spy on the publisher properly due to the commonPrefix method being final,
-    // so this test just makes sure that method returns a SdkPublisher[String] in case
-
     val asyncClientMock = mock[S3AsyncClient]
 
     val listObjectsV2Request = ListObjectsV2Request.builder
