@@ -46,5 +46,9 @@ def deleteObjects(bucket: String, keys: List[String]): Task[DeleteObjectsRespons
   s3Client.deleteObjects(bucket, keys)
 }
 
+def listKeysWithCommonPrefixes(bucket: String, keysPrefixedWith: String, trimKeysAt1stOccurrenceOf: String): Task[SdkPublisher[String]] = {
+  s3Client.listKeysWithCommonPrefixes(bucket, keysPrefixedWith, trimKeysAt1stOccurrenceOf)
+}
+
 ```
 
