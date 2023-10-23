@@ -256,7 +256,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     listObjectsRequest.bucket() should equal("bucket")
   }
 
-  "listKeysWithCommonPrefixes" should "return an error if the transfer manager returns an error" in {
+  "listKeysWithCommonPrefixes" should "return an error if the call to 'listObjectsV2Paginator' returns an error" in {
     val asyncClientMock = mock[S3AsyncClient]
 
     when(asyncClientMock.listObjectsV2Paginator(any[ListObjectsV2Request]))
