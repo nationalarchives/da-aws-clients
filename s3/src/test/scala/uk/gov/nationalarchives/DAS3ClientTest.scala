@@ -215,7 +215,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     ex.getMessage should equal("Error calling delete objects")
   }
 
-  "listCommonPrefixes" should "return a publisher with the expected type" in {
+  "listCommonPrefixes" should "return a publisher with the expected common prefixes" in {
     // You can't mock/spy on the publisher properly due to the commonPrefix method being final,
     // so this test just makes sure that method returns a SdkPublisher[String] in case
 
@@ -227,11 +227,20 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
       .prefix("prefix")
       .build
 
+    val response =
+      ListObjectsV2Response.builder.commonPrefixes(CommonPrefix.builder.prefix("commonPrefix").build).build()
     val listObjectsV2Publisher = new ListObjectsV2Publisher(asyncClientMock, listObjectsV2Request)
 
+    when(asyncClientMock.listObjectsV2(any[ListObjectsV2Request]))
+      .thenReturn(CompletableFuture.completedFuture(response))
     when(asyncClientMock.listObjectsV2Paginator(any[ListObjectsV2Request])).thenReturn(listObjectsV2Publisher)
     val client = DAS3Client[IO](asyncClientMock)
     val publisher: SdkPublisher[String] = client.listCommonPrefixes("bucket", "keyPrefix/").unsafeRunSync()
+
+    StepVerifier
+      .create(publisher)
+      .expectNext("commonPrefix")
+      .verifyComplete()
   }
 
   "listCommonPrefixes" should "make a request to 'listCommonPrefixes' with the correct arguments" in {
