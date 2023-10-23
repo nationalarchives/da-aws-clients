@@ -215,7 +215,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     ex.getMessage should equal("Error calling delete objects")
   }
 
-  "listKeysWithCommonPrefixes" should "return a publisher with the expected type" in {
+  "listCommonPrefixes" should "return a publisher with the expected type" in {
     // You can't mock/spy on the publisher properly due to the commonPrefix method being final,
     // so this test just makes sure that method returns a SdkPublisher[String] in case
 
@@ -231,10 +231,10 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
 
     when(asyncClientMock.listObjectsV2Paginator(any[ListObjectsV2Request])).thenReturn(listObjectsV2Publisher)
     val client = DAS3Client[IO](asyncClientMock)
-    val publisher: SdkPublisher[String] = client.listKeysWithCommonPrefixes("bucket", "keyPrefix/").unsafeRunSync()
+    val publisher: SdkPublisher[String] = client.listCommonPrefixes("bucket", "keyPrefix/").unsafeRunSync()
   }
 
-  "listKeysWithCommonPrefixes" should "make a request to 'listKeysWithCommonPrefixes' with the correct arguments" in {
+  "listCommonPrefixes" should "make a request to 'listCommonPrefixes' with the correct arguments" in {
     val listObjectsV2PaginatorCaptor: ArgumentCaptor[ListObjectsV2Request] =
       ArgumentCaptor.forClass(classOf[ListObjectsV2Request])
     val asyncClientMock = mock[S3AsyncClient]
@@ -248,7 +248,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     when(asyncClientMock.listObjectsV2Paginator(listObjectsV2PaginatorCaptor.capture()))
       .thenReturn(listObjectsV2Publisher)
     val client = DAS3Client[IO](asyncClientMock)
-    client.listKeysWithCommonPrefixes("bucket", "keyPrefix/").unsafeRunSync()
+    client.listCommonPrefixes("bucket", "keyPrefix/").unsafeRunSync()
 
     val listObjectsRequest = listObjectsV2PaginatorCaptor.getValue
     listObjectsRequest.delimiter() should equal("/")
@@ -256,7 +256,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     listObjectsRequest.bucket() should equal("bucket")
   }
 
-  "listKeysWithCommonPrefixes" should "return an error if the call to 'listObjectsV2Paginator' returns an error" in {
+  "listCommonPrefixes" should "return an error if the call to 'listObjectsV2Paginator' returns an error" in {
     val asyncClientMock = mock[S3AsyncClient]
 
     when(asyncClientMock.listObjectsV2Paginator(any[ListObjectsV2Request]))
@@ -264,7 +264,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val client = DAS3Client[IO](asyncClientMock)
 
     val ex = intercept[Exception] {
-      client.listKeysWithCommonPrefixes("bucket", "keyPrefix/").unsafeRunSync()
+      client.listCommonPrefixes("bucket", "keyPrefix/").unsafeRunSync()
     }
     ex.getMessage should equal("Bucket does not exist")
   }

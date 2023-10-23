@@ -41,8 +41,8 @@ def deleteObjects(bucket: String, keys: List[String]): IO[DeleteObjectsResponse]
   fs2Client.deleteObjects(bucket, keys)
 }
 
-def listKeysWithCommonPrefixes(bucket: String, keysPrefixedWith: String): IO[SdkPublisher[String]] = {
-  fs2Client.listKeysWithCommonPrefixes(bucket, keysPrefixedWith)
+def listCommonPrefixes(bucket: String, keysPrefixedWith: String): IO[SdkPublisher[String]] = {
+  fs2Client.listCommonPrefixes(bucket, keysPrefixedWith)
 }
 
 ```

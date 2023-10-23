@@ -136,7 +136,7 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
     asyncClient.deleteObjects(request).liftF
   }
 
-  def listKeysWithCommonPrefixes(
+  def listCommonPrefixes(
       bucket: String,
       keysPrefixedWith: String
   ): F[SdkPublisher[String]] = {
