@@ -12,7 +12,7 @@ object Dependencies {
   lazy val circe = "io.circe" %% "circe-core" % circeVersion
   lazy val dynamoDB = "software.amazon.awssdk" % "dynamodb" % awsSdkVersion
   lazy val eventBridgeSdk = "software.amazon.awssdk" % "eventbridge" % awsSdkVersion
-  lazy val mockito = "org.mockito" %% "mockito-scala" % "1.17.22"
+  lazy val mockito = "org.mockito" %% "mockito-scala" % "1.17.30"
   lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.5.10"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val scalaTest = "org.scalatest" %% "scalatest" % "3.2.17"
