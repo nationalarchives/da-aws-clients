@@ -1,7 +1,7 @@
 import sbt._
 
 object Dependencies {
-  private val awsSdkVersion = "2.20.69"
+  private val awsSdkVersion = "2.21.32"
   private val circeVersion = "0.14.6"
 
   lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.27.3"
