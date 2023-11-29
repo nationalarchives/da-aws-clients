@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers._
 import reactor.test.StepVerifier
 import software.amazon.awssdk.core.SdkResponse
 import software.amazon.awssdk.core.async.{ResponsePublisher, SdkPublisher}
-import software.amazon.awssdk.core.internal.async.ByteArrayAsyncRequestBody
+import software.amazon.awssdk.core.internal.async.ByteBuffersAsyncRequestBody
 import software.amazon.awssdk.services.s3.S3AsyncClient
 import software.amazon.awssdk.services.s3.model._
 import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Publisher
@@ -72,7 +72,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     when(transferManagerMock.upload(any[UploadRequest])).thenReturn(uploadResponse)
 
     val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
-    val publisher = new ByteArrayAsyncRequestBody("test".getBytes, "application/octet-stream")
+    val publisher = ByteBuffersAsyncRequestBody.from("application/octet-stream", "test".getBytes)
     val response = client.upload("bucket", "key", 1, publisher).unsafeRunSync()
     response.response().eTag() should equal("testEtag")
   }
@@ -85,7 +85,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     when(transferManagerMock.upload(uploadCaptor.capture())).thenReturn(uploadResponse)
 
     val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
-    val publisher = new ByteArrayAsyncRequestBody(content, "application/octet-stream")
+    val publisher = ByteBuffersAsyncRequestBody.from("application/octet-stream", content)
     client.upload("bucket", "key", 1, publisher).unsafeRunSync()
 
     val requestBody = uploadCaptor.getValue.requestBody()
@@ -97,7 +97,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val transferManagerMock = mock[S3TransferManager]
     when(transferManagerMock.upload(any[UploadRequest])).thenThrow(new Exception("Error uploading"))
 
-    val publisher = new ByteArrayAsyncRequestBody("test".getBytes, "application/octet-stream")
+    val publisher = ByteBuffersAsyncRequestBody.from("application/octet-stream", "test".getBytes)
     val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val ex = intercept[Exception] {
       client.upload("bucket", "key", 1, publisher).unsafeRunSync()
@@ -300,7 +300,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
 
   private def createDownloadResponse(testBytes: Array[Byte]): DefaultDownload[ResponsePublisher[GetObjectResponse]] = {
     val length = testBytes.length
-    val sdkPublisher = new ByteArrayAsyncRequestBody(testBytes, "application/octet-stream")
+    val sdkPublisher = ByteBuffersAsyncRequestBody.from("application/octet-stream", testBytes)
     val getObjectResponse = GetObjectResponse.builder().build()
     val responsePublisher = new ResponsePublisher[GetObjectResponse](getObjectResponse, sdkPublisher)
     val completedDownload = CompletedDownload.builder().result(responsePublisher).build()
