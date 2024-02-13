@@ -98,7 +98,8 @@ lazy val sqs = (project in file("sqs"))
     name := "da-sqs-client",
     description := "A project containing useful methods for interacting with SQS",
     libraryDependencies ++= Seq(
-      sqsSdk
+      sqsSdk,
+      circeParser
     )
   )
 
