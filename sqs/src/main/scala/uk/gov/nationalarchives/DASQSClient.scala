@@ -52,7 +52,7 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient) {
     Async[F].fromCompletableFuture(Async[F].pure(sqsAsyncClient.sendMessage(messageRequest)))
   }
 
-  /** Receives messages from the specified queue. The messages are serialised using the implicit decoder
+  /** Receives messages from the specified queue. The messages are deserialised using the implicit decoder
     * @param queueUrl
     *   The queue to receive messages from
     * @param maxNumberOfMessages
@@ -74,7 +74,7 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient) {
 
     Async[F]
       .fromCompletableFuture(Async[F].pure(sqsAsyncClient.receiveMessage(receiveRequest)))
-      .map(response => {
+      .flatMap { response =>
         response.messages.asScala.toList
           .map(message =>
             for {
@@ -82,9 +82,7 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient) {
             } yield MessageResponse(message.receiptHandle, messageAsT)
           )
           .sequence
-
-      })
-      .flatten
+      }
   }
 
   /** Deletes a message using the provided receipt handle

@@ -14,7 +14,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse
 import uk.gov.nationalarchives.DASQSClient
 import zio.Task
 import zio.interop.catz._
-import io.circe.generic.auto._ // Used to provide Encoder[T] but you can provide your own
+import io.circe.generic.auto._ // Used to provide Encoder[T] and and Decoder[T] but you can provide your own
 
 val sqsClient: DASQSClient[Task] = DASQSClient[Task]()
 val queueUrl = "https://queueurl"
