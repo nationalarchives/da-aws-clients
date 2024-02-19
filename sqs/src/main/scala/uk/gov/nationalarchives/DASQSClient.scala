@@ -31,12 +31,12 @@ import scala.jdk.CollectionConverters._
   */
 class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient) {
 
-  /** Deserialises the provided value to JSON and sends to the provided SQS queue.
+  /** Serialises the provided value to JSON and sends to the provided SQS queue.
     *
     * @param queueUrl
     *   The url for the SQS queue
     * @param message
-    *   A case class which will be deserialised to JSON and sent to the queue or a json string
+    *   A case class which will be serialised to JSON and sent to the queue or a json string
     * @param enc
     *   A circe encoder which will encode the case class to JSON
     * @tparam T
