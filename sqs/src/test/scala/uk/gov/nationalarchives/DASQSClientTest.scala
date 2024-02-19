@@ -2,13 +2,21 @@ package uk.gov.nationalarchives
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import io.circe.Encoder
+import io.circe.{Decoder, Encoder}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.{ArgumentCaptor, MockitoSugar}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{SendMessageRequest, SendMessageResponse}
+import software.amazon.awssdk.services.sqs.model.{
+  DeleteMessageRequest,
+  DeleteMessageResponse,
+  Message,
+  ReceiveMessageRequest,
+  ReceiveMessageResponse,
+  SendMessageRequest,
+  SendMessageResponse
+}
 
 import java.util.concurrent.CompletableFuture
 
@@ -17,6 +25,8 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
   case class Test(message: String, value: String)
 
   implicit val enc: Encoder[Test] = Encoder.forProduct2("message", "value")(t => (t.message, t.value))
+  implicit val dec: Decoder[Test] =
+    Decoder.forProduct2[Test, String, String]("message", "value")((message, value) => Test(message, value))
 
   "sendMessage" should "send the correct message to the queue" in {
     val sqsAsyncClient = mock[SqsAsyncClient]
@@ -44,4 +54,89 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     }
     ex.getMessage should equal("Error sending message")
   }
+
+  "receiveMessage" should "request messages with the correct parameters" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    val receiveMessageCaptor: ArgumentCaptor[ReceiveMessageRequest] =
+      ArgumentCaptor.forClass(classOf[ReceiveMessageRequest])
+    val response = CompletableFuture.completedFuture(ReceiveMessageResponse.builder().build())
+    when(sqsAsyncClient.receiveMessage(receiveMessageCaptor.capture())).thenReturn(response)
+
+    val client: DASQSClient[IO] = new DASQSClient[IO](sqsAsyncClient)
+
+    client.receiveMessages[Test]("https://test", maxNumberOfMessages = 20).unsafeRunSync()
+
+    val receiveRequest = receiveMessageCaptor.getValue
+    receiveRequest.maxNumberOfMessages() should equal(20)
+    receiveRequest.queueUrl() should equal("https://test")
+  }
+
+  "receiveMessage" should "return the decoded message with the receipt handle" in {
+    case class Custom(name: String, isCustom: Boolean)
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    val receiveMessageCaptor: ArgumentCaptor[ReceiveMessageRequest] =
+      ArgumentCaptor.forClass(classOf[ReceiveMessageRequest])
+    val receiveResponse = ReceiveMessageResponse
+      .builder()
+      .messages(
+        Message.builder().body("""{"name": "custom", "isCustom": true}""").receiptHandle("receiptHandle").build()
+      )
+      .build()
+
+    implicit val decoder: Decoder[Custom] =
+      Decoder.forProduct2[Custom, String, Boolean]("name", "isCustom")((name, isCustom) => Custom(name, isCustom))
+    val response = CompletableFuture.completedFuture(receiveResponse)
+    when(sqsAsyncClient.receiveMessage(receiveMessageCaptor.capture())).thenReturn(response)
+
+    val client: DASQSClient[IO] = new DASQSClient[IO](sqsAsyncClient)
+
+    val messagesResponse = client.receiveMessages[Custom]("https://test", maxNumberOfMessages = 20).unsafeRunSync()
+
+    messagesResponse.size should equal(1)
+    val messageResponse = messagesResponse.head
+    messageResponse.receiptHandle should equal("receiptHandle")
+    messageResponse.message.name should equal("custom")
+    messageResponse.message.isCustom should equal(true)
+  }
+
+  "receiveMessage" should "return an error if there is an error receiving messages" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    when(sqsAsyncClient.receiveMessage(any[ReceiveMessageRequest])).thenThrow(new Exception("Error receiving messages"))
+
+    val client = new DASQSClient[IO](sqsAsyncClient)
+
+    val ex = intercept[Exception] {
+      client.receiveMessages("https://test").unsafeRunSync()
+    }
+    ex.getMessage should equal("Error receiving messages")
+  }
+
+  "deleteMessage" should "delete the correct message from the queue" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    val deleteMessageCaptor: ArgumentCaptor[DeleteMessageRequest] =
+      ArgumentCaptor.forClass(classOf[DeleteMessageRequest])
+    val mockResponse = CompletableFuture.completedFuture(DeleteMessageResponse.builder().build())
+    when(sqsAsyncClient.deleteMessage(deleteMessageCaptor.capture())).thenReturn(mockResponse)
+
+    val client = new DASQSClient[IO](sqsAsyncClient)
+    client.deleteMessage("https://test", "receiptHandle").unsafeRunSync()
+
+    val deleteMessageValue = deleteMessageCaptor.getValue
+
+    deleteMessageValue.queueUrl() should equal("https://test")
+    deleteMessageValue.receiptHandle() should equal("receiptHandle")
+  }
+
+  "deleteMessage" should "return an error if there is an error sending to the queue" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    when(sqsAsyncClient.deleteMessage(any[DeleteMessageRequest])).thenThrow(new Exception("Error deleting message"))
+
+    val client = new DASQSClient[IO](sqsAsyncClient)
+
+    val ex = intercept[Exception] {
+      client.deleteMessage("https://test", "receiptHandle").unsafeRunSync()
+    }
+    ex.getMessage should equal("Error deleting message")
+  }
+
 }
