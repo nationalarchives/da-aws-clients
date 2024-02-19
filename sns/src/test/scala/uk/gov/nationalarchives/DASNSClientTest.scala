@@ -3,10 +3,14 @@ package uk.gov.nationalarchives
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.circe.Encoder
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
-import org.mockito.{ArgumentCaptor, MockitoSugar}
+import org.mockito.Mockito.when
+import org.mockito.invocation.InvocationOnMock
+import org.mockito.stubbing.Answer
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
+import org.scalatestplus.mockito.MockitoSugar
 import software.amazon.awssdk.services.sns.SnsAsyncClient
 import software.amazon.awssdk.services.sns.model.{PublishBatchRequest, PublishBatchRequestEntry, PublishBatchResponse}
 
@@ -18,7 +22,7 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
 
   case class Test(message: String, value: String)
 
-  implicit val enc: Encoder[Test] = Encoder.forProduct2("message", "value")(t => (t.message, t.value))
+  given Encoder[Test] = Encoder.forProduct2("message", "value")(t => (t.message, t.value))
 
   "publishBatch" should "send the correct messages to the topic" in {
     val snsAsyncClient = mock[SnsAsyncClient]
@@ -76,7 +80,7 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
 
   "publishBatch" should "return an error if there is an error sending to the topic" in {
     val snsAsyncClient = mock[SnsAsyncClient]
-    when(snsAsyncClient.publishBatch(any[PublishBatchRequest])).thenThrow(new Exception("Error sending message"))
+    when(snsAsyncClient.publishBatch(any[PublishBatchRequest])).thenThrow(new RuntimeException("Error sending message"))
 
     val client = new DASNSClient[IO](snsAsyncClient)
 
@@ -94,7 +98,7 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val mockResponse = CompletableFuture.completedFuture(PublishBatchResponse.builder().build())
     when(snsAsyncClient.publishBatch(publishCaptor.capture()))
       .thenReturn(mockResponse)
-      .andThenThrow(new Exception("Error sending messages"))
+      .thenThrow(new RuntimeException("Error sending messages"))
 
     val messages = (1 to 15).toList.map(number => Test(s"testMessage$number", s"testValue$number"))
     val convertNumberToJsonMessage = (number: Int) => s"""{"message":"testMessage$number","value":"testValue$number"}"""
@@ -126,8 +130,8 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val publishCaptor: ArgumentCaptor[PublishBatchRequest] = ArgumentCaptor.forClass(classOf[PublishBatchRequest])
     val mockResponse = CompletableFuture.completedFuture(PublishBatchResponse.builder().build())
     when(snsAsyncClient.publishBatch(publishCaptor.capture()))
-      .thenThrow(new Exception("Error sending messages"))
-      .andThenAnswer(mockResponse)
+      .thenThrow(new RuntimeException("Error sending messages"))
+      .thenAnswer((_: InvocationOnMock) => mockResponse)
 
     val messages = (1 to 15).toList.map(number => Test(s"testMessage$number", s"testValue$number"))
     val convertNumberToJsonMessage = (number: Int) => s"""{"message":"testMessage$number","value":"testValue$number"}"""

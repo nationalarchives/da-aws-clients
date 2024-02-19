@@ -3,17 +3,19 @@ package uk.gov.nationalarchives
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.circe.{Encoder, Json}
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
-import org.mockito.{ArgumentCaptor, MockitoSugar}
+import org.mockito.Mockito.when
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor4}
+import org.scalatestplus.mockito.MockitoSugar
 import software.amazon.awssdk.services.eventbridge.EventBridgeAsyncClient
 import software.amazon.awssdk.services.eventbridge.model.{PutEventsRequest, PutEventsResponse}
-import uk.gov.nationalarchives.DAEventBridgeClientTest._
+import uk.gov.nationalarchives.DAEventBridgeClientTest.*
 
 import java.util.concurrent.CompletableFuture
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class DAEventBridgeClientTest extends AnyFlatSpec with TableDrivenPropertyChecks with MockitoSugar {
 
@@ -55,7 +57,7 @@ class DAEventBridgeClientTest extends AnyFlatSpec with TableDrivenPropertyChecks
   "publishEventToEventBridge" should s"return an error if the AWS API call fails" in {
     val asyncEventBridge = mock[EventBridgeAsyncClient]
     when(asyncEventBridge.putEvents(any[PutEventsRequest]))
-      .thenReturn(CompletableFuture.failedFuture(new Exception("Error contacting EventBridge")))
+      .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Error contacting EventBridge")))
     val client = new DAEventBridgeClient[IO](asyncEventBridge)
 
     val message = intercept[Exception] {
@@ -67,7 +69,7 @@ class DAEventBridgeClientTest extends AnyFlatSpec with TableDrivenPropertyChecks
 object DAEventBridgeClientTest {
   trait TestDetail
 
-  implicit val enc: Encoder[TestDetail] = {
+  given Encoder[TestDetail] = {
     case TestDetailOne(attributeOne) => Json.obj(("attributeOne", Json.fromString(attributeOne)))
     case TestDetailThree(attributeOne, attributeTwo, attributeThree) =>
       Json.obj(
