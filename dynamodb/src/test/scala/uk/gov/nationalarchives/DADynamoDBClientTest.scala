@@ -2,28 +2,36 @@ package uk.gov.nationalarchives
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
-import org.mockito.{ArgumentCaptor, MockitoSugar}
+import org.mockito.Mockito.when
+import org.scalatest.NonImplicitAssertions
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor2}
-import org.scanamo.generic.auto._
-import org.scanamo.query.ConditionExpression._
+import org.scalatestplus.mockito.MockitoSugar
+import org.scanamo.generic.auto.*
+import org.scanamo.query.ConditionExpression.*
+import org.scanamo.query.{ConditionExpression, QueryableKeyCondition, UniqueKeyCondition}
 import org.scanamo.request.RequestCondition
-import org.scanamo.syntax._
-import org.scanamo.{DynamoReadError, DynamoValue}
+import org.scanamo.syntax.*
+import org.scanamo.{DynamoFormat, DynamoReadError, DynamoValue}
 import software.amazon.awssdk.http.SdkHttpResponse
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
-import software.amazon.awssdk.services.dynamodb.model._
-import uk.gov.nationalarchives.DADynamoDBClient._
+import software.amazon.awssdk.services.dynamodb.model.*
+import uk.gov.nationalarchives.DADynamoDBClient.{*, given}
 
 import java.util
 import java.util.concurrent.CompletableFuture
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.postfixOps
 import scala.util.Try
 
-class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrivenPropertyChecks {
+class DADynamoDBClientTest
+    extends AnyFlatSpec
+    with MockitoSugar
+    with TableDrivenPropertyChecks
+    with NonImplicitAssertions {
   case class Pk(mockPrimaryKeyName: String)
   trait MockResponse extends Product
   case class MockNestedRequest(mockSingleAttributeResponse: MockSingleAttributeRequest)
@@ -271,7 +279,7 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
     updateAttributeValueEx.getMessage should be("Table name could not be found")
   }
 
-  implicit val productFormat: Typeclass[MockResponse] = new Typeclass[MockResponse] {
+  given Typeclass[MockResponse] = new Typeclass[MockResponse] {
     override def read(av: DynamoValue): Either[DynamoReadError, MockResponse] = Right(MockSingleAttributeRequest(""))
 
     override def write(t: MockResponse): DynamoValue = t match {
@@ -342,7 +350,7 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
   "writeItems" should "return an error if the dynamo client returns an error" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     when(mockDynamoDbAsyncClient.batchWriteItem(any[BatchWriteItemRequest]))
-      .thenThrow(new Exception("Error writing to dynamo"))
+      .thenThrow(new RuntimeException("Error writing to dynamo"))
 
     val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
     val ex = intercept[Exception] {
@@ -351,26 +359,21 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
     ex.getMessage should equal("Error writing to dynamo")
   }
 
+  // For some reason the compiler is ignoring the implicit conversions when these are inside the table
+  val equalsAnd: RequestCondition = "testAttribute" === "testValue" and "testAttribute2" === "testValue2"
+  val equals: RequestCondition = "testAttribute" === "testValue"
+  val equalsOr: RequestCondition = "testAttribute" === "testValue" or "testNumber" < 5
+  val gtLtOr: RequestCondition = "testNumber" > 6 or "testNumber2" < 5
+  val gtLtAnd: RequestCondition = "testNumber" > 0 and "testNumber2" < 3
+  val ltBeginsWith: RequestCondition = "testAttribute" < 0 and ("beginsWithAttribute" beginsWith 3)
   val queryTable: TableFor2[RequestCondition, FieldName] = Table(
     ("query", "expectedQuery"),
-    ("testAttribute" === "testValue", "testAttribute = AttributeValue(S=testValue)"),
-    (
-      "testAttribute" === "testValue" and "testAttribute2" === "testValue2",
-      "testAttribute = AttributeValue(S=testValue) AND testAttribute2 = AttributeValue(S=testValue)2"
-    ),
-    (
-      "testAttribute" === "testValue" or "testNumber" < 5,
-      "(testAttribute = AttributeValue(S=testValue) OR testNumber < AttributeValue(N=5))"
-    ),
-    ("testNumber" > 6 or "testNumber2" < 5, "(testNumber > AttributeValue(N=6) OR testNumber2 < AttributeValue(N=5))"),
-    (
-      "testNumber" > 0 and "testNumber2" < 3,
-      "(testNumber > AttributeValue(N=0) AND testNumber2 < AttributeValue(N=3))"
-    ),
-    (
-      "testAttribute" < 0 and ("beginsWithAttribute" beginsWith 3),
-      "(testAttribute < AttributeValue(N=0) AND begins_with(beginsWithAttribute, AttributeValue(N=3)))"
-    )
+    (equals, "testAttribute = AttributeValue(S=testValue)"),
+    (equalsAnd, "testAttribute = AttributeValue(S=testValue) AND testAttribute2 = AttributeValue(S=testValue)2"),
+    (equalsOr, "(testAttribute = AttributeValue(S=testValue) OR testNumber < AttributeValue(N=5))"),
+    (gtLtOr, "(testNumber > AttributeValue(N=6) OR testNumber2 < AttributeValue(N=5))"),
+    (gtLtAnd, "(testNumber > AttributeValue(N=0) AND testNumber2 < AttributeValue(N=3))"),
+    (ltBeginsWith, "(testAttribute < AttributeValue(N=0) AND begins_with(beginsWithAttribute, AttributeValue(N=3)))")
   )
 
   forAll(queryTable) { (query, expectedQuery) =>
@@ -492,7 +495,7 @@ class DADynamoDBClientTest extends AnyFlatSpec with MockitoSugar with TableDrive
   private def createDynamoClientFromItems(itemMap: Map[String, String]): DADynamoDBClient[IO] = {
     val items = itemMap.map { case (k, v) =>
       val builder = AttributeValue.builder()
-      val attributeValue = if (Try(v.toInt).isSuccess) builder.n(v) else builder.s(v)
+      val attributeValue = if Try(v.toInt).isSuccess then builder.n(v) else builder.s(v)
       k -> attributeValue.build()
     }.asJava
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]

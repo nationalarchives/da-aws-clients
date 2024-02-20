@@ -18,7 +18,7 @@ import software.amazon.awssdk.services.eventbridge.model.{PutEventsRequest, PutE
   * @tparam F
   *   Type of the effect
   */
-class DAEventBridgeClient[F[_]: Async](asyncClient: EventBridgeAsyncClient) {
+class DAEventBridgeClient[F[_]: Async](asyncClient: EventBridgeAsyncClient):
 
   /** Sends an event to EventBridge. detail will be deserialised to a json string.
     * @param sourceId
@@ -33,9 +33,9 @@ class DAEventBridgeClient[F[_]: Async](asyncClient: EventBridgeAsyncClient) {
     *   The type of the detail class
     * @return
     */
-  def publishEventToEventBridge[T](sourceId: String, detailType: String, detail: T)(implicit
+  def publishEventToEventBridge[T](sourceId: String, detailType: String, detail: T)(using
       enc: Encoder[T]
-  ): F[PutEventsResponse] = {
+  ): F[PutEventsResponse] =
     val detailAsString = detail.asJson.printWith(Printer.noSpaces)
     val requestEntry: PutEventsRequestEntry = PutEventsRequestEntry.builder
       .detail(detailAsString)
@@ -47,10 +47,8 @@ class DAEventBridgeClient[F[_]: Async](asyncClient: EventBridgeAsyncClient) {
       .build()
 
     Async[F].fromCompletableFuture(Async[F].pure(asyncClient.putEvents(putEventsRequest)))
-  }
-}
 
-object DAEventBridgeClient {
+object DAEventBridgeClient:
 
   private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder.build
   private val asyncClient: EventBridgeAsyncClient = EventBridgeAsyncClient.builder
@@ -63,4 +61,3 @@ object DAEventBridgeClient {
     new DAEventBridgeClient[F](eventBridgeAsyncClient)
 
   def apply[F[_]: Async]() = new DAEventBridgeClient[F](asyncClient)
-}

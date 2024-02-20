@@ -2,26 +2,29 @@ package uk.gov.nationalarchives
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
-import org.mockito.{ArgumentCaptor, MockitoSugar}
+import org.mockito.Mockito.*
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
+import org.scalatestplus.mockito.MockitoSugar
+import org.scalatestplus.mockito.MockitoSugar.mock
 import reactor.test.StepVerifier
 import software.amazon.awssdk.core.SdkResponse
 import software.amazon.awssdk.core.async.{ResponsePublisher, SdkPublisher}
 import software.amazon.awssdk.core.internal.async.ByteBuffersAsyncRequestBody
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model._
+import software.amazon.awssdk.services.s3.model.*
 import software.amazon.awssdk.services.s3.paginators.ListObjectsV2Publisher
 import software.amazon.awssdk.transfer.s3.S3TransferManager
 import software.amazon.awssdk.transfer.s3.internal.model.{DefaultCopy, DefaultDownload, DefaultUpload}
 import software.amazon.awssdk.transfer.s3.internal.progress.{DefaultTransferProgress, DefaultTransferProgressSnapshot}
-import software.amazon.awssdk.transfer.s3.model._
+import software.amazon.awssdk.transfer.s3.model.*
 
 import java.nio.ByteBuffer
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
   type S3Download = DownloadRequest[ResponsePublisher[GetObjectResponse]]
@@ -57,7 +60,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
 
   "download" should "return an error if the transfer manager returns an error" in {
     val transferManagerMock = mock[S3TransferManager]
-    when(transferManagerMock.download(any[S3Download])).thenThrow(new Exception("Error downloading"))
+    when(transferManagerMock.download(any[S3Download])).thenThrow(new RuntimeException("Error downloading"))
 
     val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val ex = intercept[Exception] {
@@ -95,7 +98,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
 
   "upload" should "return an error if the transfer manager returns an error" in {
     val transferManagerMock = mock[S3TransferManager]
-    when(transferManagerMock.upload(any[UploadRequest])).thenThrow(new Exception("Error uploading"))
+    when(transferManagerMock.upload(any[UploadRequest])).thenThrow(new RuntimeException("Error uploading"))
 
     val publisher = ByteBuffersAsyncRequestBody.from("application/octet-stream", "test".getBytes)
     val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
@@ -134,7 +137,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
 
   "copy" should "return an error if the transfer manager returns an error" in {
     val transferManagerMock = mock[S3TransferManager]
-    when(transferManagerMock.copy(any[CopyRequest])).thenThrow(new Exception("Error copying"))
+    when(transferManagerMock.copy(any[CopyRequest])).thenThrow(new RuntimeException("Error copying"))
 
     val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val ex = intercept[Exception] {
@@ -169,7 +172,8 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
 
   "headObject" should "return an error if the async client returns an error" in {
     val asyncClientMock = mock[S3AsyncClient]
-    when(asyncClientMock.headObject(any[HeadObjectRequest])).thenThrow(new Exception("Error calling head object"))
+    when(asyncClientMock.headObject(any[HeadObjectRequest]))
+      .thenThrow(new RuntimeException("Error calling head object"))
 
     val client = DAS3Client[IO](asyncClientMock)
     val ex = intercept[Exception] {
@@ -206,7 +210,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
   "delete" should "return an error if the async client returns an error" in {
     val asyncClientMock = mock[S3AsyncClient]
     when(asyncClientMock.deleteObjects(any[DeleteObjectsRequest]))
-      .thenThrow(new Exception("Error calling delete objects"))
+      .thenThrow(new RuntimeException("Error calling delete objects"))
 
     val client = DAS3Client[IO](asyncClientMock)
     val ex = intercept[Exception] {
@@ -266,7 +270,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val asyncClientMock = mock[S3AsyncClient]
 
     when(asyncClientMock.listObjectsV2Paginator(any[ListObjectsV2Request]))
-      .thenThrow(new Exception("Bucket does not exist"))
+      .thenThrow(new RuntimeException("Bucket does not exist"))
     val client = DAS3Client[IO](asyncClientMock)
 
     val ex = intercept[Exception] {
