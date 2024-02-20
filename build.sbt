@@ -35,7 +35,7 @@ lazy val commonSettings = Seq(
       url = url("https://github.com/nationalarchives/da-aws-clients")
     )
   ),
-  scalacOptions ++= Seq("-feature", "-language:implicitConversions"),
+  scalacOptions ++= Seq("-Wunused:imports", "-Werror", "-language:implicitConversions"),
   licenses := List("MIT" -> new URL("https://choosealicense.com/licenses/mit/")),
   homepage := Some(url("https://github.com/nationalarchives/da-aws-clients")),
   useGpgPinentry := true,
@@ -146,6 +146,3 @@ lazy val docs = (project in file("site-docs"))
     ScalaUnidoc / siteSubdirName := "api",
     addMappingsToSiteDir(ScalaUnidoc / packageDoc / mappings, ScalaUnidoc / siteSubdirName)
   )
-
-//scalacOptions ++= Seq("-Wunused:imports", "-Werror")
-
