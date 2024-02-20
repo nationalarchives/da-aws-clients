@@ -61,7 +61,6 @@ class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient):
       Async[F].fromCompletableFuture(Async[F].pure(snsAsyncClient.publishBatch(batchMessageRequest)))
     }.sequence
 
-
 object DASNSClient:
   private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
 

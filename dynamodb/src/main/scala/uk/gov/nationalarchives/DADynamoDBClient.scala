@@ -54,7 +54,7 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
     val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> valuesToWrite.asJava).asJava).build()
     dynamoDBClient.batchWriteItem(req).liftF
 
-  extension[T](completableFuture: CompletableFuture[T])
+  extension [T](completableFuture: CompletableFuture[T])
     private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
 
   private def validateAndConvertAttributeValuesList[T](
@@ -178,7 +178,9 @@ object DADynamoDBClient:
 
   given Conversion[Query[_], RequestCondition] = _.apply
 
-  given [T: UniqueKeyCondition, U: UniqueKeyCondition](using qkc: QueryableKeyCondition[AndEqualsCondition[T, U]]): Conversion[AndEqualsCondition[T, U], RequestCondition] = qkc.apply(_)
+  given [T: UniqueKeyCondition, U: UniqueKeyCondition](using
+      qkc: QueryableKeyCondition[AndEqualsCondition[T, U]]
+  ): Conversion[AndEqualsCondition[T, U], RequestCondition] = qkc.apply(_)
 
   private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   private val dynamoDBClient: DynamoDbAsyncClient = DynamoDbAsyncClient

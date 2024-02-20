@@ -76,8 +76,7 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient):
       .flatMap { response =>
         response.messages.asScala.toList
           .map(message =>
-            for
-              messageAsT <- Async[F].fromEither(decode[T](message.body()))
+            for messageAsT <- Async[F].fromEither(decode[T](message.body()))
             yield MessageResponse(message.receiptHandle, messageAsT)
           )
           .sequence
@@ -117,4 +116,3 @@ object DASQSClient:
       .httpClient(httpClient)
       .build()
     new DASQSClient[F](sqsClient)
-
