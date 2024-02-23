@@ -15,7 +15,7 @@ object Dependencies {
   lazy val mockito = "org.mockito" %% "mockito-scala" % "1.17.30"
   lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.6.2"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
-  lazy val scalaTest = "org.scalatest" %% "scalatest" % "3.2.17"
+  lazy val scalaTest = "org.scalatest" %% "scalatest" % "3.2.18"
   lazy val scanamo = "org.scanamo" %% "scanamo" % "1.0.0-M30"
   lazy val snsSdk = "software.amazon.awssdk" % "sns" % awsSdkVersion
   lazy val sfnSdk = "software.amazon.awssdk" % "sfn" % awsSdkVersion
