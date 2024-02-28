@@ -1,7 +1,7 @@
 import Dependencies.*
 import sbtrelease.ReleaseStateTransformations.*
 
-ThisBuild / scalaVersion := "2.13.12"
+ThisBuild / scalaVersion := "2.13.13"
 
 lazy val root = (project in file("."))
   .settings(
@@ -20,7 +20,7 @@ lazy val commonSettings = Seq(
     mockito % Test,
     scalaTest % Test
   ),
-  scalaVersion := "2.13.12",
+  scalaVersion := "2.13.13",
   version := version.value,
   organization := "uk.gov.nationalarchives",
   scmInfo := Some(
