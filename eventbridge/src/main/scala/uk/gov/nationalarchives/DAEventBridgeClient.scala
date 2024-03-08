@@ -52,8 +52,8 @@ class DAEventBridgeClient[F[_]: Async](asyncClient: EventBridgeAsyncClient) {
 
 object DAEventBridgeClient {
 
-  private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder.build
-  private val asyncClient: EventBridgeAsyncClient = EventBridgeAsyncClient.builder
+  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder.build
+  private lazy val asyncClient: EventBridgeAsyncClient = EventBridgeAsyncClient.builder
     .httpClient(httpClient)
     .region(Region.EU_WEST_2)
     .credentialsProvider(DefaultCredentialsProvider.create())
