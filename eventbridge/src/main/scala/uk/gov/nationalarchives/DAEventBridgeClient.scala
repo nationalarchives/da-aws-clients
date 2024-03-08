@@ -20,15 +20,15 @@ import software.amazon.awssdk.services.eventbridge.model.{PutEventsRequest, PutE
   */
 class DAEventBridgeClient[F[_]: Async](asyncClient: EventBridgeAsyncClient) {
 
-  /** Sends an event to EventBridge. detail will be deserialised to a json string.
+  /** Sends an event to EventBridge. detail will be serialised to a json string.
     * @param sourceId
     *   The source ID to send to EventBridge
     * @param detailType
     *   The detail type to send to EventBridge
     * @param detail
-    *   A case class of type T. This will be deserialised to a json string
+    *   A Serializable class of type T. This will be serialised to a json string
     * @param enc
-    *   The circe encoder to do the deserialisation
+    *   The circe encoder to do the serialisation
     * @tparam T
     *   The type of the detail class
     * @return
