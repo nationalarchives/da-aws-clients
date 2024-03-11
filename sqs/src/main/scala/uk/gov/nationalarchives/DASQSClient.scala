@@ -100,9 +100,9 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient) {
 }
 
 object DASQSClient {
-  private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
+  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   case class MessageResponse[T](receiptHandle: String, message: T)
-  private val sqsClient: SqsAsyncClient = SqsAsyncClient.builder
+  private lazy val sqsClient: SqsAsyncClient = SqsAsyncClient.builder
     .region(Region.EU_WEST_2)
     .httpClient(httpClient)
     .build()
