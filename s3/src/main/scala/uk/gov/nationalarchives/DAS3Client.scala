@@ -158,7 +158,7 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
   }
 }
 object DAS3Client {
-  private val asyncClient: S3AsyncClient = S3AsyncClient
+  private lazy val asyncClient: S3AsyncClient = S3AsyncClient
     .crtBuilder()
     .region(Region.EU_WEST_2)
     .credentialsProvider(DefaultCredentialsProvider.create())
@@ -166,7 +166,7 @@ object DAS3Client {
     .minimumPartSizeInBytes(10 * 1024 * 1024)
     .build()
 
-  private val transferManager: S3TransferManager = S3TransferManager
+  private lazy val transferManager: S3TransferManager = S3TransferManager
     .builder()
     .s3Client(asyncClient)
     .build()
