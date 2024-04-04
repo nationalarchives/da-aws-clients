@@ -85,7 +85,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
       )
       .build()
 
-    implicit val decoder: Decoder[Custom] =
+    given Decoder[Custom] =
       Decoder.forProduct2[Custom, String, Boolean]("name", "isCustom")((name, isCustom) => Custom(name, isCustom))
     val response = CompletableFuture.completedFuture(receiveResponse)
     when(sqsAsyncClient.receiveMessage(receiveMessageCaptor.capture())).thenReturn(response)
