@@ -18,7 +18,7 @@ lazy val commonSettings = Seq(
     mockito % Test,
     scalaTest % Test
   ),
-  scalaVersion := "3.3.1",
+  scalaVersion := "3.3.3",
   version := version.value,
   organization := "uk.gov.nationalarchives",
   scmInfo := Some(

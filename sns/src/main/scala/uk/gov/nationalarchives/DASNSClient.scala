@@ -62,9 +62,9 @@ class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient):
     }.sequence
 
 object DASNSClient:
-  private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
+  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
 
-  private val snsClient: SnsAsyncClient = SnsAsyncClient.builder
+  private lazy val snsClient: SnsAsyncClient = SnsAsyncClient.builder
     .region(Region.EU_WEST_2)
     .httpClient(httpClient)
     .build()

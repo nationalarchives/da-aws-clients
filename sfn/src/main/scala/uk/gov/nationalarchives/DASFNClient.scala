@@ -48,9 +48,9 @@ class DASFNClient[F[_]: Async](sfnAsyncClient: SfnAsyncClient):
     Async[F].fromCompletableFuture(Async[F].pure(sfnAsyncClient.startExecution(startExecutionRequest)))
 
 object DASFNClient:
-  private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
+  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
 
-  private val sfnClient: SfnAsyncClient = SfnAsyncClient.builder
+  private lazy val sfnClient: SfnAsyncClient = SfnAsyncClient.builder
     .region(Region.EU_WEST_2)
     .httpClient(httpClient)
     .build()

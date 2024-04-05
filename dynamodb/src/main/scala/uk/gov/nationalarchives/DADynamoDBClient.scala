@@ -182,8 +182,8 @@ object DADynamoDBClient:
       qkc: QueryableKeyCondition[AndEqualsCondition[T, U]]
   ): Conversion[AndEqualsCondition[T, U], RequestCondition] = qkc.apply(_)
 
-  private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
-  private val dynamoDBClient: DynamoDbAsyncClient = DynamoDbAsyncClient
+  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
+  private lazy val dynamoDBClient: DynamoDbAsyncClient = DynamoDbAsyncClient
     .builder()
     .httpClient(httpClient)
     .region(Region.EU_WEST_2)

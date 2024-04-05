@@ -153,8 +153,8 @@ object DASecretsManagerClient:
     */
   case object Pending extends Stage
 
-  private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
-  private val secretsManagerAsyncClient: SecretsManagerAsyncClient = SecretsManagerAsyncClient.builder
+  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
+  private lazy val secretsManagerAsyncClient: SecretsManagerAsyncClient = SecretsManagerAsyncClient.builder
     .region(Region.EU_WEST_2)
     .httpClient(httpClient)
     .build()
