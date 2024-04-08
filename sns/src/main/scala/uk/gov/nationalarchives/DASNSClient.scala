@@ -22,7 +22,7 @@ import scala.jdk.CollectionConverters.SeqHasAsJava
   * @tparam F
   *   Type of the effect
   */
-class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient) {
+class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient):
 
   /** Deserialises the provided value to JSON and sends to the provided SNS topic.
     *
@@ -40,7 +40,7 @@ class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient) {
 
   def publish[T <: Product](
       topicArn: String
-  )(messages: List[T])(implicit enc: Encoder[T]): F[List[PublishBatchResponse]] = {
+  )(messages: List[T])(using enc: Encoder[T]): F[List[PublishBatchResponse]] =
     val batchesOfTenMessages: List[List[T]] = messages.grouped(10).toList
 
     batchesOfTenMessages.map { batchOfTenMessages =>
@@ -61,16 +61,12 @@ class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient) {
       Async[F].fromCompletableFuture(Async[F].pure(snsAsyncClient.publishBatch(batchMessageRequest)))
     }.sequence
 
-  }
-}
+object DASNSClient:
+  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
 
-object DASNSClient {
-  private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
-
-  private val snsClient: SnsAsyncClient = SnsAsyncClient.builder
+  private lazy val snsClient: SnsAsyncClient = SnsAsyncClient.builder
     .region(Region.EU_WEST_2)
     .httpClient(httpClient)
     .build()
 
   def apply[F[_]: Async]() = new DASNSClient[F](snsClient)
-}

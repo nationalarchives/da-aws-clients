@@ -1,8 +1,6 @@
 import Dependencies.*
 import sbtrelease.ReleaseStateTransformations.*
 
-ThisBuild / scalaVersion := "2.13.13"
-
 lazy val root = (project in file("."))
   .settings(
     name := "da-aws-clients",
@@ -20,7 +18,7 @@ lazy val commonSettings = Seq(
     mockito % Test,
     scalaTest % Test
   ),
-  scalaVersion := "2.13.13",
+  scalaVersion := "3.3.3",
   version := version.value,
   organization := "uk.gov.nationalarchives",
   scmInfo := Some(
@@ -37,6 +35,7 @@ lazy val commonSettings = Seq(
       url = url("https://github.com/nationalarchives/da-aws-clients")
     )
   ),
+  scalacOptions ++= Seq("-Wunused:imports", "-Werror", "-language:implicitConversions"),
   licenses := List("MIT" -> new URL("https://choosealicense.com/licenses/mit/")),
   homepage := Some(url("https://github.com/nationalarchives/da-aws-clients")),
   useGpgPinentry := true,
@@ -147,5 +146,3 @@ lazy val docs = (project in file("site-docs"))
     ScalaUnidoc / siteSubdirName := "api",
     addMappingsToSiteDir(ScalaUnidoc / packageDoc / mappings, ScalaUnidoc / siteSubdirName)
   )
-
-scalacOptions ++= Seq("-Wunused:imports", "-Werror")

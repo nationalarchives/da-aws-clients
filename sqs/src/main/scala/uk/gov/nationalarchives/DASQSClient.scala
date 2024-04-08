@@ -29,7 +29,7 @@ import scala.jdk.CollectionConverters._
   * @tparam F
   *   Type of the effect
   */
-class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient) {
+class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient):
 
   /** Serialises the provided value to JSON and sends to the provided SQS queue.
     *
@@ -44,13 +44,12 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient) {
     * @return
     *   The response from the send message call wrapped with F[_]
     */
-  def sendMessage[T <: Product](queueUrl: String)(message: T)(implicit enc: Encoder[T]): F[SendMessageResponse] = {
+  def sendMessage[T <: Product](queueUrl: String)(message: T)(using enc: Encoder[T]): F[SendMessageResponse] =
     val messageRequest = SendMessageRequest.builder
       .queueUrl(queueUrl)
       .messageBody(message.asJson.printWith(Printer.noSpaces))
       .build()
     Async[F].fromCompletableFuture(Async[F].pure(sqsAsyncClient.sendMessage(messageRequest)))
-  }
 
   /** Receives messages from the specified queue. The messages are deserialised using the implicit decoder
     * @param queueUrl
@@ -64,9 +63,9 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient) {
     * @return
     *   A list of MessageResponse case classes wrapped in the F effect
     */
-  def receiveMessages[T](queueUrl: String, maxNumberOfMessages: Int = 10)(implicit
+  def receiveMessages[T](queueUrl: String, maxNumberOfMessages: Int = 10)(using
       dec: Decoder[T]
-  ): F[List[MessageResponse[T]]] = {
+  ): F[List[MessageResponse[T]]] =
     val receiveRequest = ReceiveMessageRequest.builder
       .queueUrl(queueUrl)
       .maxNumberOfMessages(maxNumberOfMessages)
@@ -77,13 +76,11 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient) {
       .flatMap { response =>
         response.messages.asScala.toList
           .map(message =>
-            for {
-              messageAsT <- Async[F].fromEither(decode[T](message.body()))
-            } yield MessageResponse(message.receiptHandle, messageAsT)
+            for messageAsT <- Async[F].fromEither(decode[T](message.body()))
+            yield MessageResponse(message.receiptHandle, messageAsT)
           )
           .sequence
       }
-  }
 
   /** Deletes a message using the provided receipt handle
     * @param queueUrl
@@ -93,13 +90,11 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient) {
     * @return
     *   A DeleteMessageResponse class wrapped in the F effect.
     */
-  def deleteMessage(queueUrl: String, receiptHandle: String): F[DeleteMessageResponse] = {
+  def deleteMessage(queueUrl: String, receiptHandle: String): F[DeleteMessageResponse] =
     val deleteMessageRequest = DeleteMessageRequest.builder.queueUrl(queueUrl).receiptHandle(receiptHandle).build
     Async[F].fromCompletableFuture(Async[F].pure(sqsAsyncClient.deleteMessage(deleteMessageRequest)))
-  }
-}
 
-object DASQSClient {
+object DASQSClient:
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   case class MessageResponse[T](receiptHandle: String, message: T)
   private lazy val sqsClient: SqsAsyncClient = SqsAsyncClient.builder
@@ -108,7 +103,7 @@ object DASQSClient {
     .build()
   def apply[F[_]: Async]() = new DASQSClient[F](sqsClient)
 
-  def apply[F[_]: Async](httpsProxy: URI): DASQSClient[F] = {
+  def apply[F[_]: Async](httpsProxy: URI): DASQSClient[F] =
     val proxy = ProxyConfiguration
       .builder()
       .scheme(httpsProxy.getScheme)
@@ -121,6 +116,3 @@ object DASQSClient {
       .httpClient(httpClient)
       .build()
     new DASQSClient[F](sqsClient)
-  }
-
-}

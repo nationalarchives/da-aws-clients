@@ -17,7 +17,7 @@ import software.amazon.awssdk.services.sfn.model.{StartExecutionRequest, StartEx
   * @tparam F
   *   Type of the effect
   */
-class DASFNClient[F[_]: Async](sfnAsyncClient: SfnAsyncClient) {
+class DASFNClient[F[_]: Async](sfnAsyncClient: SfnAsyncClient):
 
   /** @param stateMachineArn
     *   The arn of the state machine to start
@@ -32,9 +32,9 @@ class DASFNClient[F[_]: Async](sfnAsyncClient: SfnAsyncClient) {
     * @return
     *   The response from the startExecution call, wrapped in F[_]
     */
-  def startExecution[T <: Product](stateMachineArn: String, input: T, name: Option[String] = None)(implicit
+  def startExecution[T <: Product](stateMachineArn: String, input: T, name: Option[String] = None)(using
       enc: Encoder[T]
-  ): F[StartExecutionResponse] = {
+  ): F[StartExecutionResponse] =
     val builder = StartExecutionRequest.builder()
     val inputString = input.asJson.printWith(Printer.noSpaces)
 
@@ -46,16 +46,13 @@ class DASFNClient[F[_]: Async](sfnAsyncClient: SfnAsyncClient) {
       .build()
 
     Async[F].fromCompletableFuture(Async[F].pure(sfnAsyncClient.startExecution(startExecutionRequest)))
-  }
 
-}
-object DASFNClient {
-  private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
+object DASFNClient:
+  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
 
-  private val sfnClient: SfnAsyncClient = SfnAsyncClient.builder
+  private lazy val sfnClient: SfnAsyncClient = SfnAsyncClient.builder
     .region(Region.EU_WEST_2)
     .httpClient(httpClient)
     .build()
 
   def apply[F[_]: Async]() = new DASFNClient[F](sfnClient)
-}

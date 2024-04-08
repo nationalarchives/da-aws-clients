@@ -4,9 +4,11 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.circe.{Decoder, Encoder}
 import org.mockito.ArgumentMatchers.any
-import org.mockito.{ArgumentCaptor, MockitoSugar}
+import org.mockito.ArgumentCaptor
+import org.mockito.Mockito.when
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
+import org.scalatestplus.mockito.MockitoSugar
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.{
   DeleteMessageRequest,
@@ -24,8 +26,8 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
 
   case class Test(message: String, value: String)
 
-  implicit val enc: Encoder[Test] = Encoder.forProduct2("message", "value")(t => (t.message, t.value))
-  implicit val dec: Decoder[Test] =
+  given Encoder[Test] = Encoder.forProduct2("message", "value")(t => (t.message, t.value))
+  given Decoder[Test] =
     Decoder.forProduct2[Test, String, String]("message", "value")((message, value) => Test(message, value))
 
   "sendMessage" should "send the correct message to the queue" in {
@@ -45,7 +47,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
 
   "sendMessage" should "return an error if there is an error sending to the queue" in {
     val sqsAsyncClient = mock[SqsAsyncClient]
-    when(sqsAsyncClient.sendMessage(any[SendMessageRequest])).thenThrow(new Exception("Error sending message"))
+    when(sqsAsyncClient.sendMessage(any[SendMessageRequest])).thenThrow(new RuntimeException("Error sending message"))
 
     val client = new DASQSClient[IO](sqsAsyncClient)
 
@@ -83,7 +85,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
       )
       .build()
 
-    implicit val decoder: Decoder[Custom] =
+    given Decoder[Custom] =
       Decoder.forProduct2[Custom, String, Boolean]("name", "isCustom")((name, isCustom) => Custom(name, isCustom))
     val response = CompletableFuture.completedFuture(receiveResponse)
     when(sqsAsyncClient.receiveMessage(receiveMessageCaptor.capture())).thenReturn(response)
@@ -101,7 +103,8 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
 
   "receiveMessage" should "return an error if there is an error receiving messages" in {
     val sqsAsyncClient = mock[SqsAsyncClient]
-    when(sqsAsyncClient.receiveMessage(any[ReceiveMessageRequest])).thenThrow(new Exception("Error receiving messages"))
+    when(sqsAsyncClient.receiveMessage(any[ReceiveMessageRequest]))
+      .thenThrow(new RuntimeException("Error receiving messages"))
 
     val client = new DASQSClient[IO](sqsAsyncClient)
 
@@ -129,7 +132,8 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
 
   "deleteMessage" should "return an error if there is an error sending to the queue" in {
     val sqsAsyncClient = mock[SqsAsyncClient]
-    when(sqsAsyncClient.deleteMessage(any[DeleteMessageRequest])).thenThrow(new Exception("Error deleting message"))
+    when(sqsAsyncClient.deleteMessage(any[DeleteMessageRequest]))
+      .thenThrow(new RuntimeException("Error deleting message"))
 
     val client = new DASQSClient[IO](sqsAsyncClient)
 

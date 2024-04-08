@@ -24,11 +24,10 @@ import java.util.concurrent.CompletableFuture
   * @tparam F
   *   The type of the effect
   */
-class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsManagerAsyncClient, secretId: String) {
+class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsManagerAsyncClient, secretId: String):
 
-  implicit class CompletableFutureUtils[T](completableFuture: CompletableFuture[T]) {
-    def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
-  }
+  extension [T](completableFuture: CompletableFuture[T])
+    private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
 
   /** Generates a random password
     * @param passwordLength
@@ -38,22 +37,20 @@ class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsMana
     * @return
     *   The randomly generated password wrapped with F[_]
     */
-  def generateRandomPassword(passwordLength: Int = 15, excludeCharacters: String = "\'\"\\"): F[String] = {
+  def generateRandomPassword(passwordLength: Int = 15, excludeCharacters: String = "\'\"\\"): F[String] =
     val request = GetRandomPasswordRequest.builder
-      .passwordLength(passwordLength)
+      .passwordLength(passwordLength.toLong)
       .excludeCharacters(excludeCharacters)
       .build
     secretsManagerAsyncClient.getRandomPassword(request).liftF.map(_.randomPassword)
-  }
 
   /** Describes a secret
     * @return
     *   A DescribeSecretResponse object wrapped in F[_]
     */
-  def describeSecret(): F[DescribeSecretResponse] = {
+  def describeSecret(): F[DescribeSecretResponse] =
     val request = DescribeSecretRequest.builder().secretId(secretId).build()
     secretsManagerAsyncClient.describeSecret(request).liftF
-  }
 
   /** Gets a secret value by stage with a default of Current
     * @param stage
@@ -65,7 +62,7 @@ class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsMana
     * @return
     *   An instance of type T wrapped in F[_]
     */
-  def getSecretValue[T](stage: Stage = Current)(implicit decoder: Decoder[T]): F[T] = secretValue(stage)
+  def getSecretValue[T](stage: Stage = Current)(using decoder: Decoder[T]): F[T] = secretValue(stage)
 
   /** Gets a secret value by stage and version id
     * @param stage
@@ -79,7 +76,7 @@ class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsMana
     * @return
     *   An instance of type T wrapped in F[_]
     */
-  def getSecretValue[T](versionId: String, stage: Stage)(implicit decoder: Decoder[T]): F[T] =
+  def getSecretValue[T](versionId: String, stage: Stage)(using decoder: Decoder[T]): F[T] =
     secretValue(stage, Option(versionId))
 
   /** Creates a new secret value for a given stage and optional request token.
@@ -96,16 +93,15 @@ class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsMana
     * @return
     *   PutSecretValueResponse wrapped in F[_]
     */
-  def putSecretValue[T](secret: T, stage: Stage = Current, clientRequestToken: Option[String] = None)(implicit
+  def putSecretValue[T](secret: T, stage: Stage = Current, clientRequestToken: Option[String] = None)(using
       encoder: Encoder[T]
-  ): F[PutSecretValueResponse] = {
+  ): F[PutSecretValueResponse] =
     val builder = PutSecretValueRequest.builder
       .secretId(secretId)
       .secretString(secret.asJson.printWith(noSpaces))
       .versionStages(stage.toString)
     val request = clientRequestToken.map(builder.clientRequestToken).getOrElse(builder).build
     secretsManagerAsyncClient.putSecretValue(request).liftF
-  }
 
   /** Update the version stage. This is used to finalise secret rotation.
     * @param moveToVersionId
@@ -121,7 +117,7 @@ class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsMana
       moveToVersionId: String,
       removeFromVersionId: String,
       stage: Stage = Current
-  ): F[UpdateSecretVersionStageResponse] = {
+  ): F[UpdateSecretVersionStageResponse] =
     val request = UpdateSecretVersionStageRequest
       .builder()
       .secretId(secretId)
@@ -130,9 +126,8 @@ class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsMana
       .removeFromVersionId(removeFromVersionId)
       .build
     secretsManagerAsyncClient.updateSecretVersionStage(request).liftF
-  }
 
-  private def secretValue[T](stage: Stage, versionId: Option[String] = None)(implicit decoder: Decoder[T]) = {
+  private def secretValue[T](stage: Stage, versionId: Option[String] = None)(using decoder: Decoder[T]) =
     val builder = GetSecretValueRequest.builder
       .secretId(secretId)
       .versionStage(stage.toString)
@@ -141,18 +136,14 @@ class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsMana
     secretsManagerAsyncClient.getSecretValue(request).liftF.flatMap { response =>
       Async[F].fromEither(decode[T](response.secretString()))
     }
-  }
-}
-object DASecretsManagerClient {
+object DASecretsManagerClient:
 
   /** Represents a stage a secret can be in. The only possible values are Current and Pending
     */
-  sealed trait Stage {
-    override def toString: String = this match {
+  sealed trait Stage:
+    override def toString: String = this match
       case Current => "AWSCURRENT"
       case Pending => "AWSPENDING"
-    }
-  }
 
   /** This maps to the AWSCURRENT stage
     */
@@ -162,8 +153,8 @@ object DASecretsManagerClient {
     */
   case object Pending extends Stage
 
-  private val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
-  private val secretsManagerAsyncClient: SecretsManagerAsyncClient = SecretsManagerAsyncClient.builder
+  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
+  private lazy val secretsManagerAsyncClient: SecretsManagerAsyncClient = SecretsManagerAsyncClient.builder
     .region(Region.EU_WEST_2)
     .httpClient(httpClient)
     .build()
@@ -171,4 +162,3 @@ object DASecretsManagerClient {
   def apply[F[_]: Async](secretId: String) = new DASecretsManagerClient[F](secretsManagerAsyncClient, secretId)
   def apply[F[_]: Async](secretsManagerAsyncClient: SecretsManagerAsyncClient, secretId: String) =
     new DASecretsManagerClient[F](secretsManagerAsyncClient, secretId)
-}

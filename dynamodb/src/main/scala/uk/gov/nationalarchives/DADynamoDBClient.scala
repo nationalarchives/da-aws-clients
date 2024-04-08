@@ -27,7 +27,7 @@ import scala.language.{implicitConversions, postfixOps}
   * @tparam F
   *   Type of the effect
   */
-class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
+class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
 
   /** Writes the list of items of type T to Dynamo
     * @param tableName
@@ -41,9 +41,9 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
     * @return
     *   The BatchWriteItemResponse wrapped with F[_]
     */
-  def writeItems[T <: Product](tableName: String, items: List[T])(implicit
+  def writeItems[T <: Product](tableName: String, items: List[T])(using
       format: DynamoFormat[T]
-  ): F[BatchWriteItemResponse] = {
+  ): F[BatchWriteItemResponse] =
     val valuesToWrite: List[WriteRequest] = items
       .map(format.write)
       .map(_.toAttributeValue.m())
@@ -53,25 +53,22 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
       }
     val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> valuesToWrite.asJava).asJava).build()
     dynamoDBClient.batchWriteItem(req).liftF
-  }
 
-  implicit class CompletableFutureUtils[T](completableFuture: CompletableFuture[T]) {
-    def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
-  }
+  extension [T](completableFuture: CompletableFuture[T])
+    private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
 
   private def validateAndConvertAttributeValuesList[T](
       attributeValuesList: util.List[util.Map[String, AttributeValue]]
-  )(implicit
+  )(using
       format: DynamoFormat[T]
   ): F[List[T]] = {
     attributeValuesList.asScala.toList.map { res =>
-      DynamoValue.fromMap {
+      DynamoValue.fromMap:
         res.asScala.toMap.map { case (name, av) =>
           name -> DynamoValue.fromAttributeValue(av)
         }
-      }
     } map { dynamoValue =>
-      format.read(dynamoValue).left.map(err => new Exception(err.show))
+      format.read(dynamoValue).left.map(err => new RuntimeException(err.show))
     } map Async[F].fromEither
   }.sequence
 
@@ -91,10 +88,10 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
     * @return
     *   A list of case classes of type T which the values populated from Dynamo, wrapped with F[_]
     */
-  def getItems[T <: Product, K <: Product](primaryKeys: List[K], tableName: String)(implicit
+  def getItems[T <: Product, K <: Product](primaryKeys: List[K], tableName: String)(using
       returnFormat: DynamoFormat[T],
       keyFormat: DynamoFormat[K]
-  ): F[List[T]] = {
+  ): F[List[T]] =
     val primaryKeysAsAttributeValues = primaryKeys
       .map(keyFormat.write)
       .map(_.toAttributeValue.m())
@@ -107,11 +104,10 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
       .requestItems(Map(tableName -> keysAndAttributes).asJava)
       .build
 
-    for {
+    for
       batchResponse <- dynamoDBClient.batchGetItem(batchGetItemRequest).liftF
       result <- validateAndConvertAttributeValuesList[T](batchResponse.responses.get(tableName))
-    } yield result
-  }
+    yield result
 
   /** Updates an attribute in DynamoDb
     *
@@ -121,7 +117,7 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
     * @return
     *   The http status code from the updateAttributeValues call wrapped with F[_]
     */
-  def updateAttributeValues(dynamoDbRequest: DADynamoDbRequest): F[Int] = {
+  def updateAttributeValues(dynamoDbRequest: DADynamoDbRequest): F[Int] =
     val attributeValueUpdates =
       dynamoDbRequest.attributeNamesAndValuesToUpdate.map { case (name, attributeValue) =>
         name -> AttributeValueUpdate
@@ -142,7 +138,6 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
       .updateItem(updateAttributeValueRequest)
       .liftF
       .map(_.sdkHttpResponse().statusCode())
-  }
 
   /** @param tableName
     *   The name of the table
@@ -158,9 +153,9 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
     * @return
     *   A list of type U wrapped in the F effect
     */
-  def queryItems[U <: Product](tableName: String, gsiName: String, requestCondition: RequestCondition)(implicit
+  def queryItems[U <: Product](tableName: String, gsiName: String, requestCondition: RequestCondition)(using
       returnTypeFormat: DynamoFormat[U]
-  ): F[List[U]] = {
+  ): F[List[U]] =
     val expressionAttributeValues =
       requestCondition.dynamoValues.flatMap(_.toExpressionAttributeValues).getOrElse(util.Collections.emptyMap())
 
@@ -175,19 +170,18 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient) {
       .query(queryRequest)
       .liftF
       .flatMap(res => validateAndConvertAttributeValuesList(res.items()))
-  }
-}
-object DADynamoDBClient {
 
-  implicit def conditionToRequestCondition[C: ConditionExpression](condition: C): RequestCondition = ScanamoCondition(
-    condition
-  ).apply.runEmptyA.value
-  implicit def queryToRequestCondition(query: Query[_]): RequestCondition = query.apply
-  implicit def keyEqualsToRequestCondition[T: UniqueKeyCondition, U: UniqueKeyCondition](
-      andEqualsCondition: AndEqualsCondition[T, U]
-  )(implicit qkc: QueryableKeyCondition[AndEqualsCondition[T, U]]): RequestCondition = {
-    Query[AndEqualsCondition[T, U]](andEqualsCondition)
-  }
+object DADynamoDBClient:
+
+  given [C: ConditionExpression]: Conversion[C, RequestCondition] =
+    ScanamoCondition(_).apply.runEmptyA.value
+
+  given Conversion[Query[_], RequestCondition] = _.apply
+
+  given [T: UniqueKeyCondition, U: UniqueKeyCondition](using
+      qkc: QueryableKeyCondition[AndEqualsCondition[T, U]]
+  ): Conversion[AndEqualsCondition[T, U], RequestCondition] = qkc.apply(_)
+
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   private lazy val dynamoDBClient: DynamoDbAsyncClient = DynamoDbAsyncClient
     .builder()
@@ -203,4 +197,3 @@ object DADynamoDBClient {
   )
 
   def apply[F[_]: Async]() = new DADynamoDBClient[F](dynamoDBClient)
-}

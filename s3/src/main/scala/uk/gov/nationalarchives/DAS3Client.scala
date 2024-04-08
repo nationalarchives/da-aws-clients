@@ -24,7 +24,7 @@ import scala.jdk.CollectionConverters._
   * @tparam F
   *   Type of the effect
   */
-class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S3AsyncClient) {
+class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S3AsyncClient):
 
   /** Copies an S3 object to a destination bucket and key
     * @param sourceBucket
@@ -43,7 +43,7 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
       sourceKey: String,
       destinationBucket: String,
       destinationKey: String
-  ): F[CompletedCopy] = {
+  ): F[CompletedCopy] =
     val copyObjectRequest: CopyObjectRequest = CopyObjectRequest.builder
       .sourceBucket(sourceBucket)
       .sourceKey(sourceKey)
@@ -52,7 +52,6 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
       .build()
     val copyRequest: CopyRequest = CopyRequest.builder.copyObjectRequest(copyObjectRequest).build
     transferManager.copy(copyRequest).completionFuture().liftF
-  }
 
   /** Downloads a file from S3
     * @param bucket
@@ -62,7 +61,7 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
     * @return
     *   A reactive streams Publisher wrapped in the F effect
     */
-  def download(bucket: String, key: String): F[Publisher[ByteBuffer]] = {
+  def download(bucket: String, key: String): F[Publisher[ByteBuffer]] =
     val getObjectRequest = GetObjectRequest.builder.key(key).bucket(bucket).build
     val downloadRequest = DownloadRequest.builder
       .getObjectRequest(getObjectRequest)
@@ -73,7 +72,6 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
       .completionFuture()
       .liftF
       .map(_.result())
-  }
 
   /** Uploads a file to S3
     * @param bucket
@@ -87,7 +85,7 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
     * @return
     *   A CompletedUpload wrapped in the F effect.
     */
-  def upload(bucket: String, key: String, contentLength: Long, publisher: Publisher[ByteBuffer]): F[CompletedUpload] = {
+  def upload(bucket: String, key: String, contentLength: Long, publisher: Publisher[ByteBuffer]): F[CompletedUpload] =
     val putObjectRequest = PutObjectRequest.builder
       .contentLength(contentLength)
       .bucket(bucket)
@@ -101,7 +99,6 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
       UploadRequest.builder().requestBody(requestBody).putObjectRequest(putObjectRequest).build()
     )
     response.completionFuture().liftF
-  }
 
   /** Makes a head object request for an S3 object
     * @param bucket
@@ -111,13 +108,12 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
     * @return
     *   The HeadObjectResponse from AWS wrapped in the F effect
     */
-  def headObject(bucket: String, key: String): F[HeadObjectResponse] = {
+  def headObject(bucket: String, key: String): F[HeadObjectResponse] =
     val headObjectRequest = HeadObjectRequest.builder
       .bucket(bucket)
       .key(key)
       .build
     asyncClient.headObject(headObjectRequest).liftF
-  }
 
   /** @param bucket
     *   The bucket to delete the objects from
@@ -126,7 +122,7 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
     * @return
     *   The DeleteObjectsResponse from AWS wrapped in the F effect
     */
-  def deleteObjects(bucket: String, keys: List[String]): F[DeleteObjectsResponse] = {
+  def deleteObjects(bucket: String, keys: List[String]): F[DeleteObjectsResponse] =
     val objects: util.List[ObjectIdentifier] = keys.map(ObjectIdentifier.builder.key(_).build).asJava
     val delete = Delete.builder.objects(objects).build
     val request = DeleteObjectsRequest.builder
@@ -134,12 +130,11 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
       .delete(delete)
       .build()
     asyncClient.deleteObjects(request).liftF
-  }
 
   def listCommonPrefixes(
       bucket: String,
       keysPrefixedWith: String
-  ): F[SdkPublisher[String]] = {
+  ): F[SdkPublisher[String]] =
     val listObjectsV2Request = ListObjectsV2Request.builder
       .bucket(bucket)
       .delimiter("/")
@@ -151,14 +146,11 @@ class DAS3Client[F[_]: Async](transferManager: S3TransferManager, asyncClient: S
       .commonPrefixes()
       .map(_.prefix())
     Async[F].pure(keysThatHaveSamePrefix)
-  }
 
-  private implicit class CompletableFutureUtils[T](completableFuture: CompletableFuture[T]) {
-    def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
-  }
-}
-object DAS3Client {
-  private lazy val asyncClient: S3AsyncClient = S3AsyncClient
+  extension [T](completableFuture: CompletableFuture[T])
+    private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
+object DAS3Client:
+  private val asyncClient: S3AsyncClient = S3AsyncClient
     .crtBuilder()
     .region(Region.EU_WEST_2)
     .credentialsProvider(DefaultCredentialsProvider.create())
@@ -166,18 +158,16 @@ object DAS3Client {
     .minimumPartSizeInBytes(10 * 1024 * 1024)
     .build()
 
-  private lazy val transferManager: S3TransferManager = S3TransferManager
+  private val transferManager: S3TransferManager = S3TransferManager
     .builder()
     .s3Client(asyncClient)
     .build()
 
   def apply[F[_]: Async](): DAS3Client[F] = new DAS3Client[F](transferManager, asyncClient)
 
-  def apply[F[_]: Async](asyncClient: S3AsyncClient): DAS3Client[F] = {
+  def apply[F[_]: Async](asyncClient: S3AsyncClient): DAS3Client[F] =
     val transferManager: S3TransferManager = S3TransferManager
       .builder()
       .s3Client(asyncClient)
       .build()
     new DAS3Client[F](transferManager, asyncClient)
-  }
-}
