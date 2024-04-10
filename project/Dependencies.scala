@@ -17,7 +17,7 @@ object Dependencies {
   lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.6.4"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val scalaTest = "org.scalatest" %% "scalatest" % scalaTestVersion
-  lazy val scanamo = "org.scanamo" %% "scanamo" % "1.0.4"
+  lazy val scanamo = "org.scanamo" %% "scanamo" % "1.1.1"
   lazy val snsSdk = "software.amazon.awssdk" % "sns" % awsSdkVersion
   lazy val sfnSdk = "software.amazon.awssdk" % "sfn" % awsSdkVersion
   lazy val sqsSdk = "software.amazon.awssdk" % "sqs" % awsSdkVersion
