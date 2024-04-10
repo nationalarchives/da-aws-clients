@@ -139,10 +139,8 @@ lazy val docs = (project in file("site-docs"))
     description := "Markdown files which are published as GitHub pages documentation",
     publish / skip := true
   )
-  .enablePlugins(ParadoxSitePlugin, ScalaUnidocPlugin, SitePreviewPlugin)
+  .enablePlugins(ParadoxSitePlugin, SitePreviewPlugin)
   .settings(
     paradoxProperties += ("version" -> (ThisBuild / version).value.split("-").head),
-    paradoxTheme := Some(builtinParadoxTheme("generic")),
-    ScalaUnidoc / siteSubdirName := "api",
-    addMappingsToSiteDir(ScalaUnidoc / packageDoc / mappings, ScalaUnidoc / siteSubdirName)
+    paradoxTheme := Some(builtinParadoxTheme("generic"))
   )
