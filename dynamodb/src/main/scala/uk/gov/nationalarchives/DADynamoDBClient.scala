@@ -176,7 +176,7 @@ object DADynamoDBClient:
   given [C: ConditionExpression]: Conversion[C, RequestCondition] =
     ScanamoCondition(_).apply.runEmptyA.value
 
-  given Conversion[Query[_], RequestCondition] = _.apply
+  given Conversion[Query[?], RequestCondition] = _.apply
 
   given [T: UniqueKeyCondition, U: UniqueKeyCondition](using
       qkc: QueryableKeyCondition[AndEqualsCondition[T, U]]
