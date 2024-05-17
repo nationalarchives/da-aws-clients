@@ -28,6 +28,8 @@ import scala.language.{implicitConversions, postfixOps}
   *   Type of the effect
   */
 class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
+  extension [T](completableFuture: CompletableFuture[T])
+    private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
 
   /** Writes a single item to DynamoDb
     *
@@ -78,24 +80,6 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
       }
     val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> valuesToWrite.asJava).asJava).build()
     dynamoDBClient.batchWriteItem(req).liftF
-
-  extension [T](completableFuture: CompletableFuture[T])
-    private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
-
-  private def validateAndConvertAttributeValuesList[T](
-      attributeValuesList: util.List[util.Map[String, AttributeValue]]
-  )(using
-      format: DynamoFormat[T]
-  ): F[List[T]] = {
-    attributeValuesList.asScala.toList.map { res =>
-      DynamoValue.fromMap:
-        res.asScala.toMap.map { case (name, av) =>
-          name -> DynamoValue.fromAttributeValue(av)
-        }
-    } map { dynamoValue =>
-      format.read(dynamoValue).left.map(err => new RuntimeException(err.show))
-    } map Async[F].fromEither
-  }.sequence
 
   /** Returns a list of items of type T which match the list of primary keys
     * @param primaryKeys
@@ -195,6 +179,19 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
       .query(queryRequest)
       .liftF
       .flatMap(res => validateAndConvertAttributeValuesList(res.items()))
+
+  private def validateAndConvertAttributeValuesList[T](
+      attributeValuesList: util.List[util.Map[String, AttributeValue]]
+  )(using format: DynamoFormat[T]): F[List[T]] = {
+    attributeValuesList.asScala.toList.map { res =>
+      DynamoValue.fromMap:
+        res.asScala.toMap.map { case (name, av) =>
+          name -> DynamoValue.fromAttributeValue(av)
+        }
+    } map { dynamoValue =>
+      format.read(dynamoValue).left.map(err => new RuntimeException(err.show))
+    } map Async[F].fromEither
+  }.sequence
 
 object DADynamoDBClient:
 
