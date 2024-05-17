@@ -38,6 +38,20 @@ def getItemsExample(tableName: String, partitionKeyValue1: String, partitionKeyV
   fs2Client.getItems[GetItemsResponse, PartitionKey](partitionKeys, tableName)
 }
 
+def writeItemExample(tableName: String, attributeName: String, attributeName2: String, newAttributeValue: String,
+                     newAttributeValue2: String): IO[Int] = {
+
+  val dynamoDbWriteItemRequest = DADynamoDbWriteItemRequest(
+    tableName,
+    Map(
+      attributeName -> Some(AttributeValue.builder().s(newAttributeValue).build()),
+      attributeName2 -> Some(AttributeValue.builder().s(newAttributeValue2).build())
+    )
+    Some("attribute_not_exists(attributeName)")
+  )
+  fs2Client.writeItem(dynamoDbWriteItemRequest)
+}
+
 def writeItemsExample(tableName: String): IO[BatchWriteItemResponse] = {
   val WriteItemsRequest = List(WriteItemsRequest("attributeValue", WriteItemsNestedRequest("attributeValue2")))
   fs2Client.writeItems(tableName, WriteItemsRequest)

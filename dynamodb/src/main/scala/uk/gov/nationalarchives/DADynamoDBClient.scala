@@ -29,6 +29,31 @@ import scala.language.{implicitConversions, postfixOps}
   */
 class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
 
+  /** Writes a single item to DynamoDb
+    *
+    * @param dynamoDbWriteRequest
+    *   a case class with table name, the attributes and values you want to write and the (optional) conditional
+    *   expression you want to apply
+    * @return
+    *   The http status code from the writeItem call wrapped with F[_]
+    */
+  def writeItem(dynamoDbWriteRequest: DADynamoDbWriteItemRequest): F[Int] =
+    val putItemRequestBuilder = PutItemRequest
+      .builder()
+      .tableName(dynamoDbWriteRequest.tableName)
+      .item(dynamoDbWriteRequest.attributeNamesAndValuesToWrite.asJava)
+
+    val putItemRequest: PutItemRequest =
+      dynamoDbWriteRequest.conditionalExpression
+        .map(putItemRequestBuilder.conditionExpression)
+        .getOrElse(putItemRequestBuilder)
+        .build
+
+    dynamoDBClient
+      .putItem(putItemRequest)
+      .liftF
+      .map(_.sdkHttpResponse().statusCode())
+
   /** Writes the list of items of type T to Dynamo
     * @param tableName
     *   The name of the table
@@ -194,6 +219,12 @@ object DADynamoDBClient:
       tableName: String,
       primaryKeyAndItsValue: Map[String, AttributeValue],
       attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]]
+  )
+
+  case class DADynamoDbWriteItemRequest(
+      tableName: String,
+      attributeNamesAndValuesToWrite: Map[String, AttributeValue],
+      conditionalExpression: Option[String] = None
   )
 
   def apply[F[_]: Async]() = new DADynamoDBClient[F](dynamoDBClient)
