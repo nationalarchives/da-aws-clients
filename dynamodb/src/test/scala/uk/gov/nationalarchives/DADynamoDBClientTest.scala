@@ -492,6 +492,94 @@ class DADynamoDBClientTest
     ex.getMessage should be("Table name could not be found")
   }
 
+  List((Some("attribute_not_exists(mockAttribute)"), "attribute_not_exists(mockAttribute)"), (None, null)).foreach {
+    (conditionalExpression, expectedConditionalExpression) =>
+      "writeItem" should s"pass in the correct values to the PutItemRequest if the conditional expression is $conditionalExpression" in {
+        val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+        val sdkHttpResponse = SdkHttpResponse
+          .builder()
+          .statusCode(200)
+          .build()
+
+        val putItemResponseBuilder = PutItemResponse.builder()
+        putItemResponseBuilder.sdkHttpResponse(sdkHttpResponse)
+
+        val clientPutItemResponse = putItemResponseBuilder.build()
+        val clientPutItemResponseInCf = CompletableFuture.completedFuture(clientPutItemResponse)
+        val putItemRequestCaptor: ArgumentCaptor[PutItemRequest] = ArgumentCaptor.forClass(classOf[PutItemRequest])
+
+        when(mockDynamoDbAsyncClient.putItem(putItemRequestCaptor.capture())).thenReturn(clientPutItemResponseInCf)
+
+        val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+
+        val dynamoDbWriteItemRequest =
+          DADynamoDbWriteItemRequest(
+            "mockTableName",
+            Map(
+              "mockAttribute" -> AttributeValue.builder().s("newMockItemValue").build(),
+              "mockAttribute2" -> AttributeValue.builder().s("newMockItemValue2").build()
+            ),
+            conditionalExpression
+          )
+
+        client.writeItem(dynamoDbWriteItemRequest).unsafeRunSync()
+        val putItemCaptorValue = putItemRequestCaptor.getValue
+
+        putItemCaptorValue.tableName() should be("mockTableName")
+        putItemCaptorValue.item().toString should be(
+          "{mockAttribute=AttributeValue(S=newMockItemValue), " +
+            "mockAttribute2=AttributeValue(S=newMockItemValue2)}"
+        )
+        putItemCaptorValue.conditionExpression() should be(expectedConditionalExpression)
+      }
+  }
+
+  "writeItem" should "return a 200 status code if the request is fine" in {
+    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+    val sdkHttpResponse = SdkHttpResponse
+      .builder()
+      .statusCode(200)
+      .build()
+
+    val putItemResponseBuilder = PutItemResponse.builder()
+    putItemResponseBuilder.sdkHttpResponse(sdkHttpResponse)
+
+    val clientPutItemResponse = putItemResponseBuilder.build()
+    val clientPutItemResponseInCf = CompletableFuture.completedFuture(clientPutItemResponse)
+
+    when(mockDynamoDbAsyncClient.putItem(any[PutItemRequest])).thenReturn(clientPutItemResponseInCf)
+
+    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+
+    val dynamoDbWriteItemRequest =
+      DADynamoDbWriteItemRequest(
+        "mockTableName",
+        Map("mockAttribute" -> AttributeValue.builder().s("newMockItemValue").build())
+      )
+    val putItemResponseStatusCode = client.writeItem(dynamoDbWriteItemRequest).unsafeRunSync()
+    putItemResponseStatusCode should be(200)
+  }
+
+  "writeItem" should "return an Exception if there is something wrong with the request/AWS" in {
+    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+
+    when(mockDynamoDbAsyncClient.putItem(any[PutItemRequest])).thenThrow(
+      ResourceNotFoundException.builder.message("Table name could not be found").build()
+    )
+
+    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+
+    val dynamoDbWriteItemRequest =
+      DADynamoDbWriteItemRequest(
+        "mockTableName",
+        Map("mockAttribute" -> AttributeValue.builder().s("newMockItemValue").build())
+      )
+    val writeItemValueEx = intercept[Exception] {
+      client.writeItem(dynamoDbWriteItemRequest).unsafeRunSync()
+    }
+    writeItemValueEx.getMessage should be("Table name could not be found")
+  }
+
   private def createDynamoClientFromItems(itemMap: Map[String, String]): DADynamoDBClient[IO] = {
     val items = itemMap.map { case (k, v) =>
       val builder = AttributeValue.builder()

@@ -43,6 +43,21 @@ def getItemsExample(tableName: String, partitionKeyValue1: String, partitionKeyV
   val partitionKeys = List(partitionKey1, partitionKey2)
   zioClient.getItems[GetItemsResponse, PartitionKey](partitionKeys, tableName)
 }
+
+def writeItemExample(tableName: String, attributeName: String, attributeName2: String, newAttributeValue: String,
+                     newAttributeValue2: String): IO[Int] = {
+
+  val dynamoDbWriteItemRequest = DADynamoDbWriteItemRequest(
+    tableName,
+    Map(
+      attributeName -> Some(AttributeValue.builder().s(newAttributeValue).build()),
+      attributeName2 -> Some(AttributeValue.builder().s(newAttributeValue2).build())
+    )
+      Some("attribute_not_exists(attributeName)")
+  )
+  zioClient.writeItem(dynamoDbWriteItemRequest)
+}
+
 def writeItemsExample(tableName: String): Task[BatchWriteItemResponse] = {
   val writeItemsRequest = List(WriteItemsRequest("attributeValue", WriteItemsNestedRequest("attributeValue2")))
   zioClient.writeItems(tableName, writeItemsRequest)

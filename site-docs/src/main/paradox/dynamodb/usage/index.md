@@ -12,6 +12,8 @@ val clientWithDefault = DADynamoDBClient()
 The client exposes four methods:
 
 ```scala
+def writeItem(dynamoDbWriteRequest: DADynamoDbWriteItemRequest): F[Int]
+
 def writeItems[T <: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
 
 def getItems[T <: Product, K <: Product](keys: List[K], tableName: String)(implicit returnFormat: DynamoFormat[T], keyFormat: DynamoFormat[K]): F[List[T]]
@@ -21,11 +23,26 @@ def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int]
 def queryItems[U <: Product](tableName: String, gsiName: String, requestCondition: RequestCondition)(implicit returnTypeFormat: DynamoFormat[U]): F[List[U]]
 ```
 
-1. The `writeItems` method takes a table name of type `String` and a list of case classes of type `T`
+1. The `writeItem` method takes a DADynamoDbWriteItemRequest Case Class
+    ```scala
+     case class DADynamoDbWriteItemRequest(tableName: String,
+                                           attributeNamesAndValuesToWrite: Map[String, AttributeValue],
+                                           conditionalExpression: Option[String]=None)
+    ```
+   consisting of:
+
+- tableName - the DynamoDB table you want to make the edits in
+- attributeNamesAndValuesToWrite - the key = attribute name you want to write; the value = value belonging that the name
+- conditionalExpression - there is an option to add a conditional expression e.g. only write to the table when this condition is met
+  - this should be in the form of a query
+  - for rules and more about conditions, check the [AWS docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html#Expressions.OperatorsAndFunctions.Syntax)
+
+
+2. The `writeItems` method takes a table name of type `String` and a list of case classes of type `T`
     1. If, for example, the table has an attribute called "name", of type String, the case class would be `Items(name: String)`
 
 
-2. The `getItems` method takes a table name and a list of case classes of type `K` (the case class for the partition key should match the partition key of the dynamo table.)
+3. The `getItems` method takes a table name and a list of case classes of type `K` (the case class for the partition key should match the partition key of the dynamo table.)
     1. If, for example, the table has a partition key called "id", of type String, the case class would be `PartitionKey(id: String)`
     2. If, for example, there is a composite key of "id", of type String and "index" of type number, the case class would be `PartitionKey(id: String, index: Long)`
     3. If, for example, there is a possibility that an attribute does not exist, the attribute should be an Option; the case class would be `PartitionKey(id: String, name: Option[String])`
@@ -33,7 +50,7 @@ def queryItems[U <: Product](tableName: String, gsiName: String, requestConditio
    The method will return a list of items of type `T` (same type as the `items` passed into the `.writeItems` method)
 
 
-3. The `updateAttributeValues` method takes a dynamoDbRequest Case Class:
+4. The `updateAttributeValues` method takes a dynamoDbRequest Case Class:
 
     ```scala
       case class DynamoDbRequest(tableName: String,
@@ -50,7 +67,7 @@ def queryItems[U <: Product](tableName: String, gsiName: String, requestConditio
     - if you are using the .getAttributeValues method, you can set the value to None
 
 
-4. The `queryItems` method takes a table name of type `String`, a global secondary index name and a Scanamo filter query. The query is converted to a Scanamo `RequestCondition` using implicits in the companion object.
+5. The `queryItems` method takes a table name of type `String`, a global secondary index name and a Scanamo filter query. The query is converted to a Scanamo `RequestCondition` using implicits in the companion object.
 
 
 @@@ index
