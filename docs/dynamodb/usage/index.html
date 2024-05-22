@@ -31,7 +31,7 @@
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.56*
+0.1.57*
 </div>
 </div>
 <div class="nav-toc">
@@ -102,7 +102,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.56*
+0.1.57*
 </div>
 </div>
 <div class="nav-toc">
@@ -174,7 +174,9 @@ val clientWithCustom = new DADynamoDBClient(dynamoDbAsyncClient)
 val clientWithDefault = DADynamoDBClient()
 </code></pre>
 <p>The client exposes four methods:</p>
-<pre class="prettyprint"><code class="language-scala">def writeItems[T &lt;: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
+<pre class="prettyprint"><code class="language-scala">def writeItem(dynamoDbWriteRequest: DADynamoDbWriteItemRequest): F[Int]
+
+def writeItems[T &lt;: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
 
 def getItems[T &lt;: Product, K &lt;: Product](keys: List[K], tableName: String)(implicit returnFormat: DynamoFormat[T], keyFormat: DynamoFormat[K]): F[List[T]]
 
@@ -182,6 +184,21 @@ def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int]
 
 def queryItems[U &lt;: Product](tableName: String, gsiName: String, requestCondition: RequestCondition)(implicit returnTypeFormat: DynamoFormat[U]): F[List[U]]
 </code></pre>
+<ol>
+  <li>
+  <p>The <code>writeItem</code> method takes a DADynamoDbWriteItemRequest Case Class</p>
+  <pre class="prettyprint"><code class="language-scala"> case class DADynamoDbWriteItemRequest(tableName: String,
+                                       attributeNamesAndValuesToWrite: Map[String, AttributeValue],
+                                       conditionalExpression: Option[String]=None)
+</code></pre> consisting of:</li>
+</ol>
+<ul>
+  <li>tableName - the DynamoDB table you want to make the edits in</li>
+  <li>attributeNamesAndValuesToWrite - the key = attribute name you want to write; the value = value belonging that the name</li>
+  <li>conditionalExpression - there is an option to add a conditional expression e.g. only write to the table when this condition is met</li>
+  <li>this should be in the form of a query</li>
+  <li>for rules and more about conditions, check the <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html#Expressions.OperatorsAndFunctions.Syntax">AWS docs</a></li>
+</ul>
 <ol>
   <li>
     <p>The <code>writeItems</code> method takes a table name of type <code>String</code> and a list of case classes of type <code>T</code></p>
@@ -292,7 +309,7 @@ def queryItems[U &lt;: Product](tableName: String, gsiName: String, requestCondi
 <script type="text/javascript" src="../../lib/prettify/prettify.js"></script>
 <script type="text/javascript" src="../../lib/prettify/lang-scala.js"></script>
 <script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
-<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.56-SNAPSHOT', '')});</script>
+<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.57-SNAPSHOT', '')});</script>
 
 
 </html>
