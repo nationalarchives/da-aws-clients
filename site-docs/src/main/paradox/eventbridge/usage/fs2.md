@@ -15,6 +15,7 @@ group="uk.gov.nationalarchives" artifact="da-eventbridge-client_2.13" version=$v
 ```scala
 import cats.effect._
 import uk.gov.nationalarchives.DAEventBridgeClient
+import uk.gov.nationalarchives.DAEventBridgeClient.DetailType.DR2Message
 import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest
 import io.circe.generic.auto._ // Used to provide Encoder[T] but you can provide your own
 
@@ -23,6 +24,6 @@ import io.circe.generic.auto._ // Used to provide Encoder[T] but you can provide
 
     case class Detail(value: String)
     
-    eventBridgeClient.publishEventToEventBridge[Detail]("sourceId", "detailType", Detail("value"))
+    eventBridgeClient.publishEventToEventBridge[Detail]("sourceId", DR2Message, Detail("value"))
   }
 ```

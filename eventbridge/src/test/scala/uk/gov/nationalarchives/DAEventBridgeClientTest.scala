@@ -12,6 +12,8 @@ import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor4}
 import org.scalatestplus.mockito.MockitoSugar
 import software.amazon.awssdk.services.eventbridge.EventBridgeAsyncClient
 import software.amazon.awssdk.services.eventbridge.model.{PutEventsRequest, PutEventsResponse}
+import uk.gov.nationalarchives.DAEventBridgeClient.DetailType
+import uk.gov.nationalarchives.DAEventBridgeClient.DetailType.{DR2DevMessage, DR2Message}
 import uk.gov.nationalarchives.DAEventBridgeClientTest.*
 
 import java.util.concurrent.CompletableFuture
@@ -21,18 +23,18 @@ class DAEventBridgeClientTest extends AnyFlatSpec with TableDrivenPropertyChecks
 
   private val putEventsResponse = CompletableFuture.completedFuture(PutEventsResponse.builder().build())
 
-  val detailTable: TableFor4[String, String, TestDetail, String] = Table(
+  val detailTable: TableFor4[String, DetailType, TestDetail, String] = Table(
     ("source", "detailType", "detail", "expectedResponse"),
-    ("sourceOne", "detailTypeOne", TestDetailOne("attributeOne"), "{\"attributeOne\":\"attributeOne\"}"),
+    ("sourceOne", DR2Message, TestDetailOne("attributeOne"), "{\"attributeOne\":\"attributeOne\"}"),
     (
       "sourceTwo",
-      "detailTypeTwo",
+      DR2DevMessage,
       TestDetailTwo("attributeOne", 1),
       "{\"attributeOne\":\"attributeOne\",\"attributeTwo\":1}"
     ),
     (
       "sourceThree",
-      "detailTypeThree",
+      DR2Message,
       TestDetailThree("attributeOne", 1, attributeThree = false),
       "{\"attributeOne\":\"attributeOne\",\"attributeTwo\":1,\"attributeThree\":false}"
     )
@@ -49,7 +51,7 @@ class DAEventBridgeClientTest extends AnyFlatSpec with TableDrivenPropertyChecks
 
       val entry = eventRequestCaptor.getValue.entries().asScala.head
       entry.source() should equal(source)
-      entry.detailType() should equal(detailType)
+      entry.detailType() should equal(detailType.toString)
       entry.detail() should equal(expectedResponse)
     }
   }
@@ -61,7 +63,7 @@ class DAEventBridgeClientTest extends AnyFlatSpec with TableDrivenPropertyChecks
     val client = new DAEventBridgeClient[IO](asyncEventBridge)
 
     val message = intercept[Exception] {
-      client.publishEventToEventBridge[TestDetail]("source", "detailType", TestDetailOne("test")).unsafeRunSync()
+      client.publishEventToEventBridge[TestDetail]("source", DR2Message, TestDetailOne("test")).unsafeRunSync()
     }.getMessage
     message should equal("Error contacting EventBridge")
   }
