@@ -24,6 +24,9 @@ import zio._
 import zio.interop.catz._
 import io.circe.generic.auto._ // Used to provide Encoder[T] but you can provide your own
 
+  enum DetailType:
+    case TestMessage, TestDevMessage
+
   def publishToEventBridge(): Task[PutEventsResponse] = {
     val eventBridgeClient = DAEventBridgeClient[Task]()
 

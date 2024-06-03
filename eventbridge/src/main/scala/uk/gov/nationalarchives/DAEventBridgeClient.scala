@@ -9,7 +9,6 @@ import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.eventbridge.EventBridgeAsyncClient
 import software.amazon.awssdk.services.eventbridge.model.{PutEventsRequest, PutEventsRequestEntry, PutEventsResponse}
-import uk.gov.nationalarchives.DAEventBridgeClient.DetailType
 
 /** An EventBridgeAsyncClient client. It is written generically so can be used for any effect which has an Async
   * instance. Requires an implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -30,11 +29,13 @@ class DAEventBridgeClient[F[_]: Async](asyncClient: EventBridgeAsyncClient):
     *   A Serializable class of type T. This will be serialised to a json string
     * @param enc
     *   The circe encoder to do the serialisation
+    * @tparam U
+    *   The type of the detailType (it's preferable to use an enum/sealed trait as the `toString` method will be used)
     * @tparam T
     *   The type of the detail class
     * @return
     */
-  def publishEventToEventBridge[T](sourceId: String, detailType: DetailType, detail: T)(using
+  def publishEventToEventBridge[T, U](sourceId: String, detailType: U, detail: T)(using
       enc: Encoder[T]
   ): F[PutEventsResponse] =
     val detailAsString = detail.asJson.printWith(Printer.noSpaces)
@@ -62,6 +63,3 @@ object DAEventBridgeClient:
     new DAEventBridgeClient[F](eventBridgeAsyncClient)
 
   def apply[F[_]: Async]() = new DAEventBridgeClient[F](asyncClient)
-
-  enum DetailType:
-    case DR2Message, DR2DevMessage

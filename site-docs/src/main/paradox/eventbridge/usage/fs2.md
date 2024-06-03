@@ -15,15 +15,17 @@ group="uk.gov.nationalarchives" artifact="da-eventbridge-client_2.13" version=$v
 ```scala
 import cats.effect._
 import uk.gov.nationalarchives.DAEventBridgeClient
-import uk.gov.nationalarchives.DAEventBridgeClient.DetailType.DR2Message
 import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest
 import io.circe.generic.auto._ // Used to provide Encoder[T] but you can provide your own
+
+  enum DetailType:
+    case TestMessage, TestDevMessage
 
   def publishToEventBridge(): IO[PutEventsResponse] = {
     val eventBridgeClient = DAEventBridgeClient[IO]()
 
     case class Detail(value: String)
     
-    eventBridgeClient.publishEventToEventBridge[Detail]("sourceId", DR2Message, Detail("value"))
+    eventBridgeClient.publishEventToEventBridge[Detail]("sourceId", TestMessage, Detail("value"))
   }
 ```
