@@ -18,16 +18,20 @@ group3="dev.zio" artifact3="zio-interop-cats_2.13" version3="23.0.0.5"
 ```scala
 import cats.effect._
 import uk.gov.nationalarchives.DAEventBridgeClient
+import uk.gov.nationalarchives.DAEventBridgeClient.DetailType.DR2Message
 import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest
 import zio._
 import zio.interop.catz._
 import io.circe.generic.auto._ // Used to provide Encoder[T] but you can provide your own
+
+  enum DetailType:
+    case TestMessage, TestDevMessage
 
   def publishToEventBridge(): Task[PutEventsResponse] = {
     val eventBridgeClient = DAEventBridgeClient[Task]()
 
     case class Detail(value: String)
     
-    eventBridgeClient.publishEventToEventBridge[Detail]("sourceId", "detailType", Detail("value"))
+    eventBridgeClient.publishEventToEventBridge[Detail]("sourceId", DR2Message, Detail("value"))
   }
 ```

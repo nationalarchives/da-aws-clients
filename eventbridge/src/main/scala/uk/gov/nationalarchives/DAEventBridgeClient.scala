@@ -29,18 +29,20 @@ class DAEventBridgeClient[F[_]: Async](asyncClient: EventBridgeAsyncClient):
     *   A Serializable class of type T. This will be serialised to a json string
     * @param enc
     *   The circe encoder to do the serialisation
+    * @tparam U
+    *   The type of the detailType (it's preferable to use an enum/sealed trait as the `toString` method will be used)
     * @tparam T
     *   The type of the detail class
     * @return
     */
-  def publishEventToEventBridge[T](sourceId: String, detailType: String, detail: T)(using
+  def publishEventToEventBridge[T, U](sourceId: String, detailType: U, detail: T)(using
       enc: Encoder[T]
   ): F[PutEventsResponse] =
     val detailAsString = detail.asJson.printWith(Printer.noSpaces)
     val requestEntry: PutEventsRequestEntry = PutEventsRequestEntry.builder
       .detail(detailAsString)
       .source(sourceId)
-      .detailType(detailType)
+      .detailType(detailType.toString)
       .build()
     val putEventsRequest = PutEventsRequest.builder
       .entries(requestEntry)

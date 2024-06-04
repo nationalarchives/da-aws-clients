@@ -12,9 +12,10 @@ val clientWithDefault = DAEventBridgeClient()
 The client exposes one method:
 
 ```scala
-def publishEventToEventBridge[T](sourceId: String, detailType: String, detail: T)(implicit enc: Encoder[T]): F[PutEventsResponse]
+def publishEventToEventBridge[T, U](sourceId: String, detailType: U, detail: T)(implicit enc: Encoder[T]): F[PutEventsResponse]
 ```
 
+The `U` type provided for detailType, should preferably be an enum or sealed trait as the `toString` method will be used on it
 The message takes an object of type `T` which is deserialised to json and sent as the event detail.
 You need an implicit circe encoder to deserialise the object.
 

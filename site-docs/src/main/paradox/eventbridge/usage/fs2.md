@@ -18,11 +18,14 @@ import uk.gov.nationalarchives.DAEventBridgeClient
 import software.amazon.awssdk.services.eventbridge.model.PutEventsRequest
 import io.circe.generic.auto._ // Used to provide Encoder[T] but you can provide your own
 
+  enum DetailType:
+    case TestMessage, TestDevMessage
+
   def publishToEventBridge(): IO[PutEventsResponse] = {
     val eventBridgeClient = DAEventBridgeClient[IO]()
 
     case class Detail(value: String)
     
-    eventBridgeClient.publishEventToEventBridge[Detail]("sourceId", "detailType", Detail("value"))
+    eventBridgeClient.publishEventToEventBridge[Detail]("sourceId", TestMessage, Detail("value"))
   }
 ```
