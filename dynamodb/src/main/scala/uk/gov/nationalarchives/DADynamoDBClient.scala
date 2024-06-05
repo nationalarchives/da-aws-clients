@@ -60,26 +60,32 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
     * @param tableName
     *   The name of the table
     * @param items
-    *   A list of items to write to Dynamo
+    *   A list of items to write to Dynamo (list can be any length; requests will be batched into groups of 25)
     * @param format
     *   An implicit scanamo formatter for type T
     * @tparam T
     *   The type of the items to be written to Dynamo
     * @return
-    *   The BatchWriteItemResponse wrapped with F[_]
+    *   The List of BatchWriteItemResponse wrapped with F[_]
     */
   def writeItems[T <: Product](tableName: String, items: List[T])(using
       format: DynamoFormat[T]
-  ): F[BatchWriteItemResponse] =
-    val valuesToWrite: List[WriteRequest] = items
-      .map(format.write)
-      .map(_.toAttributeValue.m())
-      .map { itemMap =>
-        val putRequest = PutRequest.builder().item(itemMap).build
-        WriteRequest.builder().putRequest(putRequest).build
+  ): F[List[BatchWriteItemResponse]] =
+    items
+      .grouped(25)
+      .toList
+      .map { batchedItems =>
+        val valuesToWrite: List[WriteRequest] = batchedItems
+          .map(format.write)
+          .map(_.toAttributeValue.m())
+          .map { itemMap =>
+            val putRequest = PutRequest.builder().item(itemMap).build
+            WriteRequest.builder().putRequest(putRequest).build
+          }
+        val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> valuesToWrite.asJava).asJava).build()
+        dynamoDBClient.batchWriteItem(req).liftF
       }
-    val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> valuesToWrite.asJava).asJava).build()
-    dynamoDBClient.batchWriteItem(req).liftF
+      .sequence
 
   /** Returns a list of items of type T which match the list of primary keys
     * @param primaryKeys

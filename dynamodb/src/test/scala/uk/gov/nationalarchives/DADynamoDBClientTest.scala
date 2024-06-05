@@ -329,9 +329,9 @@ class DADynamoDBClientTest
       when(mockDynamoDbAsyncClient.batchWriteItem(writeCaptor.capture()))
         .thenReturn(CompletableFuture.completedFuture(writeItemResponse.build()))
       val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
-      val response = client.writeItems("table", input).unsafeRunSync()
+      val responses = client.writeItems("table", input).unsafeRunSync()
 
-      response.sdkHttpResponse().statusCode() should equal(200)
+      responses.foreach(_.sdkHttpResponse().statusCode() should equal(200))
 
       writeCaptor.getAllValues.size should equal(1)
       val batchWriteItemRequest = writeCaptor.getAllValues.asScala.head
