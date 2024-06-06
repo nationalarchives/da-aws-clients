@@ -41,6 +41,7 @@ def queryItems[U <: Product](tableName: String, gsiName: String, requestConditio
 2. The `writeItems` method takes a table name of type `String` and a list of case classes of type `T`
     1. If, for example, the table has an attribute called "name", of type String, the case class would be `Items(name: String)`
 
+   Even though the list that this method takes can be of any length, if the list contains more than 25 items, requests will be batched into groups of 25
 
 3. The `getItems` method takes a table name and a list of case classes of type `K` (the case class for the partition key should match the partition key of the dynamo table.)
     1. If, for example, the table has a partition key called "id", of type String, the case class would be `PartitionKey(id: String)`
