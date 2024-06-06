@@ -31,7 +31,7 @@
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.59*
+0.1.60*
 </div>
 </div>
 <div class="nav-toc">
@@ -102,7 +102,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.59*
+0.1.60*
 </div>
 </div>
 <div class="nav-toc">
@@ -200,14 +200,15 @@ def queryItems[U &lt;: Product](tableName: String, gsiName: String, requestCondi
   <li>for rules and more about conditions, check the <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.OperatorsAndFunctions.html#Expressions.OperatorsAndFunctions.Syntax">AWS docs</a></li>
 </ul>
 <ol>
-  <li>
-    <p>The <code>writeItems</code> method takes a table name of type <code>String</code> and a list of case classes of type <code>T</code></p>
+  <li>The <code>writeItems</code> method takes a table name of type <code>String</code> and a list of case classes of type <code>T</code>
     <ol>
       <li>If, for example, the table has an attribute called &ldquo;name&rdquo;, of type String, the case class would be <code>Items(name: String)</code></li>
     </ol>
   </li>
-  <li>
-    <p>The <code>getItems</code> method takes a table name and a list of case classes of type <code>K</code> (the case class for the partition key should match the partition key of the dynamo table.)</p>
+</ol>
+<p>Even though the list that this method takes can be of any length, if the list contains more than 25 items, requests will be batched into groups of 25</p>
+<ol>
+  <li>The <code>getItems</code> method takes a table name and a list of case classes of type <code>K</code> (the case class for the partition key should match the partition key of the dynamo table.)
     <ol>
       <li>If, for example, the table has a partition key called &ldquo;id&rdquo;, of type String, the case class would be <code>PartitionKey(id: String)</code></li>
       <li>If, for example, there is a composite key of &ldquo;id&rdquo;, of type String and &ldquo;index&rdquo; of type number, the case class would be <code>PartitionKey(id: String, index: Long)</code></li>
@@ -309,7 +310,7 @@ def queryItems[U &lt;: Product](tableName: String, gsiName: String, requestCondi
 <script type="text/javascript" src="../../lib/prettify/prettify.js"></script>
 <script type="text/javascript" src="../../lib/prettify/lang-scala.js"></script>
 <script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
-<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.59-SNAPSHOT', '')});</script>
+<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.60-SNAPSHOT', '')});</script>
 
 
 </html>
