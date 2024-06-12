@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.when
+import org.mockito.Mockito.{times, verify, when}
 import org.scalatest.NonImplicitAssertions
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.*
@@ -345,6 +345,32 @@ class DADynamoDBClientTest
 
       attributeNameAndValues should equal(expectedAttributeNamesAndValues)
     }
+  }
+
+  "writeItems" should "call the dynamo client again if there are unprocessed items" in {
+    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+    val input = List(MockSingleAttributeRequest("mockValue"))
+    val putRequest =
+      PutRequest.builder.item(Map("unprocessedKey" -> AttributeValue.builder.s("unprocessedValue").build).asJava).build
+    val unprocessedWriteRequest = WriteRequest.builder.putRequest(putRequest).build
+    val writeItemResponseWithUnprocessed = BatchWriteItemResponse.builder
+      .unprocessedItems(Map("table" -> List(unprocessedWriteRequest).asJava).asJava)
+      .build
+    val writeCaptor: ArgumentCaptor[BatchWriteItemRequest] = ArgumentCaptor.forClass(classOf[BatchWriteItemRequest])
+
+    when(mockDynamoDbAsyncClient.batchWriteItem(writeCaptor.capture()))
+      .thenReturn(CompletableFuture.completedFuture(writeItemResponseWithUnprocessed))
+      .thenReturn(CompletableFuture.completedFuture(BatchWriteItemResponse.builder.build))
+    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val responses = client.writeItems("table", input).unsafeRunSync()
+
+    verify(mockDynamoDbAsyncClient, times(2)).batchWriteItem(any[BatchWriteItemRequest])
+
+    val writeRequests = writeCaptor.getAllValues.asScala
+    def getValue(batchWriteItemRequest: BatchWriteItemRequest, key: String) =
+      batchWriteItemRequest.requestItems().asScala.flatMap(_._2.asScala).head.putRequest().item.get(key).s()
+    getValue(writeRequests.head, "mockAttribute") should equal("mockValue")
+    getValue(writeRequests.last, "unprocessedKey") should equal("unprocessedValue")
   }
 
   "writeItems" should "return an error if the dynamo client returns an error" in {

@@ -1,22 +1,22 @@
 package uk.gov.nationalarchives
 
 import cats.effect.Async
-import cats.implicits._
-import org.scanamo.DynamoReadError._
-import org.scanamo._
-import org.scanamo.query.{Condition => ScanamoCondition, _}
+import cats.implicits.*
+import org.scanamo.DynamoReadError.*
+import org.scanamo.*
+import org.scanamo.query.{Condition as ScanamoCondition, *}
 import org.scanamo.request.RequestCondition
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
-import software.amazon.awssdk.services.dynamodb.model._
-import uk.gov.nationalarchives.DADynamoDBClient._
+import software.amazon.awssdk.services.dynamodb.model.*
+import uk.gov.nationalarchives.DADynamoDBClient.*
 
 import java.util
 import java.util.concurrent.CompletableFuture
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.{implicitConversions, postfixOps}
 
 /** An DynamoDbAsync client. It is written generically so can be used for any effect which has an Async instance.
@@ -56,7 +56,7 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
       .liftF
       .map(_.sdkHttpResponse().statusCode())
 
-  /** Writes the list of items of type T to Dynamo
+  /** Writes the list of items of type T to Dynamo. Unprocessed items will be retried
     * @param tableName
     *   The name of the table
     * @param items
@@ -82,8 +82,14 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
             val putRequest = PutRequest.builder().item(itemMap).build
             WriteRequest.builder().putRequest(putRequest).build
           }
-        val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> valuesToWrite.asJava).asJava).build()
-        dynamoDBClient.batchWriteItem(req).liftF
+        Async[F].tailRecM(valuesToWrite) { reqs =>
+          val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> reqs.asJava).asJava).build()
+          dynamoDBClient.batchWriteItem(req).liftF.map {
+            case resUnprocessed if resUnprocessed.hasUnprocessedItems =>
+              Left(resUnprocessed.unprocessedItems.get(tableName).asScala.toList)
+            case res => Right(res)
+          }
+        }
       }
       .sequence
 
