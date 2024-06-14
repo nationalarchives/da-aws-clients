@@ -85,7 +85,8 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
         Async[F].tailRecM(valuesToWrite) { reqs =>
           val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> reqs.asJava).asJava).build()
           dynamoDBClient.batchWriteItem(req).liftF.map {
-            case resUnprocessed if resUnprocessed.hasUnprocessedItems =>
+            case resUnprocessed
+                if resUnprocessed.hasUnprocessedItems && resUnprocessed.unprocessedItems.containsKey(tableName) =>
               Left(resUnprocessed.unprocessedItems.get(tableName).asScala.toList)
             case res => Right(res)
           }
