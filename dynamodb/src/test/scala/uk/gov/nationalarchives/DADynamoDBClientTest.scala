@@ -323,6 +323,7 @@ class DADynamoDBClientTest
         .statusCode(200)
         .build()
       val writeItemResponse = BatchWriteItemResponse.builder
+        .unprocessedItems(java.util.Map.of())
       writeItemResponse.sdkHttpResponse(sdkHttpResponse)
       val writeCaptor: ArgumentCaptor[BatchWriteItemRequest] = ArgumentCaptor.forClass(classOf[BatchWriteItemRequest])
 
