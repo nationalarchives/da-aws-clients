@@ -12,7 +12,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.*
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerAsyncClient
 import software.amazon.awssdk.services.secretsmanager.model.*
-import uk.gov.nationalarchives.DASecretsManagerClient.{Current, Pending, Stage}
+import uk.gov.nationalarchives.DASecretsManagerClient.Stage
+import uk.gov.nationalarchives.DASecretsManagerClient.Stage.*
 
 import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters.*

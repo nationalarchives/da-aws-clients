@@ -12,6 +12,7 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerAsyncClient
 import software.amazon.awssdk.services.secretsmanager.model._
 import uk.gov.nationalarchives.DASecretsManagerClient._
+import uk.gov.nationalarchives.DASecretsManagerClient.Stage._
 
 import java.util.concurrent.CompletableFuture
 
@@ -138,20 +139,15 @@ class DASecretsManagerClient[F[_]: Async](secretsManagerAsyncClient: SecretsMana
     }
 object DASecretsManagerClient:
 
-  /** Represents a stage a secret can be in. The only possible values are Current and Pending
+  /** Represents a stage a secret can be in. The only possible values are Current, Pending and Previous
     */
-  sealed trait Stage:
+  enum Stage:
     override def toString: String = this match
-      case Current => "AWSCURRENT"
-      case Pending => "AWSPENDING"
+      case Current  => "AWSCURRENT"
+      case Pending  => "AWSPENDING"
+      case Previous => "AWSPREVIOUS"
 
-  /** This maps to the AWSCURRENT stage
-    */
-  case object Current extends Stage
-
-  /** This maps to the AWSPENDING stage
-    */
-  case object Pending extends Stage
+    case Current, Pending, Previous
 
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   private lazy val secretsManagerAsyncClient: SecretsManagerAsyncClient = SecretsManagerAsyncClient.builder
