@@ -31,11 +31,11 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
   extension [T](completableFuture: CompletableFuture[T])
     private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
 
-  /** Deletes a list of items with primary keys of type T from Dynamo. Unprocessed items will be retried
+  /** Takes a list of primary key attributes of type T and deletes the corresponding items from Dynamo
     *
     * @param tableName
     *   The name of the table
-    * @param primaryKeys
+    * @param primaryKeyAttributes
     *   A list of primary keys to delete from Dynamo (list can be any length; requests will be batched into groups of
     *   25)
     * @param format
@@ -45,12 +45,14 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
     * @return
     *   The List of BatchWriteItemResponse wrapped with F[_]
     */
-  def deleteItems[T](tableName: String, primaryKeys: List[T])(using DynamoFormat[T]): F[List[BatchWriteItemResponse]] =
+  def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using
+      DynamoFormat[T]
+  ): F[List[BatchWriteItemResponse]] =
     writeOrDeleteItems(
       tableName,
-      primaryKeys,
-      itemMap => {
-        val deleteRequest = DeleteRequest.builder().key(itemMap).build
+      primaryKeyAttributes,
+      primaryKeyAttributesMap => {
+        val deleteRequest = DeleteRequest.builder().key(primaryKeyAttributesMap).build
         WriteRequest.builder().deleteRequest(deleteRequest).build
       }
     )
