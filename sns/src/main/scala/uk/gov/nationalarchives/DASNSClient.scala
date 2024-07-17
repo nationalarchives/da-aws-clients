@@ -16,13 +16,10 @@ import scala.jdk.CollectionConverters.SeqHasAsJava
 
 /** An SNS client. It is written generically so can be used for any effect which has an Async instance. Requires an
   * implicit instance of cats Async which is used to convert CompletableFuture to F
-  *
-  * @param snsAsyncClient
-  *   An AWS SNS Async client
   * @tparam F
   *   Type of the effect
   */
-class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient):
+trait DASNSClient[F[_]: Async]:
 
   /** Deserialises the provided value to JSON and sends to the provided SNS topic.
     *
@@ -40,33 +37,40 @@ class DASNSClient[F[_]: Async](snsAsyncClient: SnsAsyncClient):
 
   def publish[T <: Product](
       topicArn: String
-  )(messages: List[T])(using enc: Encoder[T]): F[List[PublishBatchResponse]] =
-    val batchesOfTenMessages: List[List[T]] = messages.grouped(10).toList
-
-    batchesOfTenMessages.map { batchOfTenMessages =>
-      val batchOfTenJsonMessages: util.List[PublishBatchRequestEntry] = batchOfTenMessages.map { message =>
-        val messageAsJson: String = message.asJson.printWith(Printer.noSpaces)
-        PublishBatchRequestEntry
-          .builder()
-          .id(UUID.randomUUID().toString)
-          .message(messageAsJson)
-          .build()
-      }.asJava
-
-      val batchMessageRequest: PublishBatchRequest =
-        PublishBatchRequest.builder
-          .topicArn(topicArn)
-          .publishBatchRequestEntries(batchOfTenJsonMessages)
-          .build()
-      Async[F].fromCompletableFuture(Async[F].pure(snsAsyncClient.publishBatch(batchMessageRequest)))
-    }.sequence
+  )(messages: List[T])(using enc: Encoder[T]): F[List[PublishBatchResponse]]
 
 object DASNSClient:
-  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
+  def apply[F[_]: Async](): DASNSClient[F] = {
+    lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
 
-  private lazy val snsClient: SnsAsyncClient = SnsAsyncClient.builder
-    .region(Region.EU_WEST_2)
-    .httpClient(httpClient)
-    .build()
+    lazy val snsClient: SnsAsyncClient = SnsAsyncClient.builder
+      .region(Region.EU_WEST_2)
+      .httpClient(httpClient)
+      .build()
+    DASNSClient[F](snsClient)
+  }
 
-  def apply[F[_]: Async]() = new DASNSClient[F](snsClient)
+  def apply[F[_]: Async](snsAsyncClient: SnsAsyncClient): DASNSClient[F] = new DASNSClient[F]() {
+    override def publish[T <: Product](topicArn: String)(messages: List[T])(using
+        enc: Encoder[T]
+    ): F[List[PublishBatchResponse]] =
+      val batchesOfTenMessages: List[List[T]] = messages.grouped(10).toList
+
+      batchesOfTenMessages.map { batchOfTenMessages =>
+        val batchOfTenJsonMessages: util.List[PublishBatchRequestEntry] = batchOfTenMessages.map { message =>
+          val messageAsJson: String = message.asJson.printWith(Printer.noSpaces)
+          PublishBatchRequestEntry
+            .builder()
+            .id(UUID.randomUUID().toString)
+            .message(messageAsJson)
+            .build()
+        }.asJava
+
+        val batchMessageRequest: PublishBatchRequest =
+          PublishBatchRequest.builder
+            .topicArn(topicArn)
+            .publishBatchRequestEntries(batchOfTenJsonMessages)
+            .build()
+        Async[F].fromCompletableFuture(Async[F].pure(snsAsyncClient.publishBatch(batchMessageRequest)))
+      }.sequence
+  }

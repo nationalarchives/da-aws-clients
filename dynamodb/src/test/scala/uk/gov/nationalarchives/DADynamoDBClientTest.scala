@@ -65,7 +65,7 @@ class DADynamoDBClientTest
 
       when(mockDynamoDbAsyncClient.batchGetItem(getBatchItemCaptor.capture())).thenReturn(clientGetItemResponseInCf)
 
-      val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+      val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
       val result = client.getItems[MockSingleAttributeRequest, Pk](keys, "mockTableName").unsafeRunSync()
 
@@ -99,7 +99,7 @@ class DADynamoDBClientTest
 
     when(mockDynamoDbAsyncClient.batchGetItem(any[BatchGetItemRequest])).thenReturn(clientGetItemResponseInCf)
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val getAttributeValueResponse: List[MockTwoAttributesRequest] =
       client.getItems[MockTwoAttributesRequest, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
@@ -127,7 +127,7 @@ class DADynamoDBClientTest
 
     when(mockDynamoDbAsyncClient.batchGetItem(any[BatchGetItemRequest])).thenReturn(clientGetItemResponseInCf)
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val getAttributeValueResponse: List[MockTwoAttributesRequest] =
       client.getItems[MockTwoAttributesRequest, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
@@ -152,7 +152,7 @@ class DADynamoDBClientTest
 
     when(mockDynamoDbAsyncClient.batchGetItem(any[BatchGetItemRequest])).thenReturn(clientGetItemResponseInCf)
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val ex = intercept[Exception] {
       client.getItems[MockSingleAttributeRequest, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
@@ -177,7 +177,7 @@ class DADynamoDBClientTest
 
     when(mockDynamoDbAsyncClient.batchGetItem(any[BatchGetItemRequest])).thenReturn(clientGetItemResponseInCf)
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val ex = intercept[Exception] {
       client.getItems[MockNestedRequest, Pk](List(Pk("mockPrimaryKeyValue")), "mockTableName").unsafeRunSync()
@@ -192,7 +192,7 @@ class DADynamoDBClientTest
       ResourceNotFoundException.builder.message("Table name could not be found").build()
     )
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val getAttributeValueEx = intercept[Exception] {
       client.getItems[MockSingleAttributeRequest, Pk](List(Pk("id")), "table").unsafeRunSync()
@@ -216,7 +216,7 @@ class DADynamoDBClientTest
 
     when(mockDynamoDbAsyncClient.updateItem(updateItemCaptor.capture())).thenReturn(clientGetItemResponseInCf)
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val dynamoDbRequest =
       DADynamoDbRequest(
@@ -250,7 +250,7 @@ class DADynamoDBClientTest
 
     when(mockDynamoDbAsyncClient.updateItem(any[UpdateItemRequest])).thenReturn(clientGetItemResponseInCf)
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val dynamoDbRequest =
       DADynamoDbRequest(
@@ -269,7 +269,7 @@ class DADynamoDBClientTest
       ResourceNotFoundException.builder.message("Table name could not be found").build()
     )
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val dynamoDbRequest =
       DADynamoDbRequest(
@@ -350,7 +350,7 @@ class DADynamoDBClientTest
 
         when(mockDynamoDbAsyncClient.batchWriteItem(writeCaptor.capture()))
           .thenReturn(CompletableFuture.completedFuture(writeItemResponse.build()))
-        val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+        val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
         val responses = writeOrDeleteFunction(client, "table", input).unsafeRunSync()
 
         responses.foreach(_.sdkHttpResponse().statusCode() should equal(200))
@@ -388,7 +388,7 @@ class DADynamoDBClientTest
       when(mockDynamoDbAsyncClient.batchWriteItem(writeCaptor.capture()))
         .thenReturn(CompletableFuture.completedFuture(writeItemResponseWithUnprocessed))
         .thenReturn(CompletableFuture.completedFuture(BatchWriteItemResponse.builder.build))
-      val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+      val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
       val responses = writeOrDeleteFunction(client, "table", input).unsafeRunSync()
 
@@ -411,7 +411,7 @@ class DADynamoDBClientTest
       when(mockDynamoDbAsyncClient.batchWriteItem(any[BatchWriteItemRequest]))
         .thenThrow(new RuntimeException("Error writing to dynamo"))
 
-      val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+      val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
       val ex = intercept[Exception] {
         writeOrDeleteFunction(client, "table", List(MockSingleAttributeRequest("mockValue"))).unsafeRunSync()
       }
@@ -449,7 +449,7 @@ class DADynamoDBClientTest
 
       when(mockDynamoDbAsyncClient.query(queryRequestCaptor.capture())).thenReturn(clientQueryResponseInCf)
 
-      val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+      val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
       client.queryItems[MockSingleAttributeRequest]("testTable", "indexName", query).unsafeRunSync()
 
@@ -542,7 +542,7 @@ class DADynamoDBClientTest
       ResourceNotFoundException.builder.message("Table name could not be found").build()
     )
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val ex = intercept[Exception] {
       client
@@ -570,7 +570,7 @@ class DADynamoDBClientTest
 
         when(mockDynamoDbAsyncClient.putItem(putItemRequestCaptor.capture())).thenReturn(clientPutItemResponseInCf)
 
-        val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+        val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
         val dynamoDbWriteItemRequest =
           DADynamoDbWriteItemRequest(
@@ -609,7 +609,7 @@ class DADynamoDBClientTest
 
     when(mockDynamoDbAsyncClient.putItem(any[PutItemRequest])).thenReturn(clientPutItemResponseInCf)
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val dynamoDbWriteItemRequest =
       DADynamoDbWriteItemRequest(
@@ -627,7 +627,7 @@ class DADynamoDBClientTest
       ResourceNotFoundException.builder.message("Table name could not be found").build()
     )
 
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
     val dynamoDbWriteItemRequest =
       DADynamoDbWriteItemRequest(
@@ -653,6 +653,6 @@ class DADynamoDBClientTest
     val clientQueryResponseInCf: CompletableFuture[QueryResponse] = CompletableFuture.completedFuture(queryResponse)
 
     when(mockDynamoDbAsyncClient.query(any[QueryRequest])).thenReturn(clientQueryResponseInCf)
-    new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    DADynamoDBClient[IO](mockDynamoDbAsyncClient)
   }
 }
