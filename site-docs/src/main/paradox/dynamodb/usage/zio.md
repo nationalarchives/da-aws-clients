@@ -45,7 +45,7 @@ def getItemsExample(tableName: String, partitionKeyValue1: String, partitionKeyV
 }
 
 def writeItemExample(tableName: String, attributeName: String, attributeName2: String, newAttributeValue: String,
-                     newAttributeValue2: String): IO[Int] = {
+                     newAttributeValue2: String): Task[Int] = {
 
   val dynamoDbWriteItemRequest = DADynamoDbWriteItemRequest(
     tableName,
@@ -99,6 +99,12 @@ def queryItemsExample(tableName: String, gsiName: String): Unit = {
     gsiName,
     "numericAttribute" < 5 or "parentPath" === "/a/parent/path"
   )
+}
+
+def deleteItemsExample(tableName: String): Task[BatchWriteItemResponse] = {
+  val partitionKey1 = PartitionKey(partitionKeyValue1)
+  val partitionKey2 = PartitionKey(partitionKeyValue2)
+  zioClient.deleteItems(tableName, List(partitionKey1, partitionKey2))
 }
 
 ```

@@ -9,18 +9,20 @@ val clientWithCustom = new DADynamoDBClient(dynamoDbAsyncClient)
 val clientWithDefault = DADynamoDBClient()
 ```
 
-The client exposes four methods:
+The client exposes six methods:
 
 ```scala
 def writeItem(dynamoDbWriteRequest: DADynamoDbWriteItemRequest): F[Int]
 
-def writeItems[T <: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
+def writeItems[T <: Product](tableName: String, items: List[T])(using format: DynamoFormat[T]): F[BatchWriteItemResponse]
 
-def getItems[T <: Product, K <: Product](keys: List[K], tableName: String)(implicit returnFormat: DynamoFormat[T], keyFormat: DynamoFormat[K]): F[List[T]]
+def getItems[T <: Product, K <: Product](keys: List[K], tableName: String)(using returnFormat: DynamoFormat[T], keyFormat: DynamoFormat[K]): F[List[T]]
 
 def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int]
 
 def queryItems[U <: Product](tableName: String, gsiName: String, requestCondition: RequestCondition)(implicit returnTypeFormat: DynamoFormat[U]): F[List[U]]
+
+def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using DynamoFormat[T]): F[List[BatchWriteItemResponse]]
 ```
 
 1. The `writeItem` method takes a DADynamoDbWriteItemRequest Case Class
@@ -70,7 +72,7 @@ def queryItems[U <: Product](tableName: String, gsiName: String, requestConditio
 
 5. The `queryItems` method takes a table name of type `String`, a global secondary index name and a Scanamo filter query. The query is converted to a Scanamo `RequestCondition` using implicits in the companion object.
 
-
+6. The `deleteItems` method takes a table name of type `String` and a list of objects of type `T` These objects represent a primary key in Dynamo and the implicit `DynamoFormat[T]` is used to convert the case classes.
 @@@ index
 
 * [Zio](zio.md)
