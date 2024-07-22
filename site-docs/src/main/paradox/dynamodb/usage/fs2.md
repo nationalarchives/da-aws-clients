@@ -94,4 +94,10 @@ def queryItemsExample(tableName: String): Unit = {
     "numericAttribute" < 5 or "parentPath" === "/a/parent/path"
   )
 }
+
+def deleteItemsExample(tableName: String): IO[BatchWriteItemResponse] = {
+  val partitionKey1 = PartitionKey(partitionKeyValue1)
+  val partitionKey2 = PartitionKey(partitionKeyValue2)
+  fs2Client.deleteItems(tableName, List(partitionKey1, partitionKey2))
+}
 ```

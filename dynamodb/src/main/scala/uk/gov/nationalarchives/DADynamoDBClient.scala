@@ -31,6 +31,32 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
   extension [T](completableFuture: CompletableFuture[T])
     private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
 
+  /** Takes a list of primary key attributes of type T and deletes the corresponding items from Dynamo
+    *
+    * @param tableName
+    *   The name of the table
+    * @param primaryKeyAttributes
+    *   A list of primary keys to delete from Dynamo (list can be any length; requests will be batched into groups of
+    *   25)
+    * @param format
+    *   An implicit scanamo formatter for type T
+    * @tparam T
+    *   The type of the primary keys to be deleted from Dynamo
+    * @return
+    *   The List of BatchWriteItemResponse wrapped with F[_]
+    */
+  def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using
+      DynamoFormat[T]
+  ): F[List[BatchWriteItemResponse]] =
+    writeOrDeleteItems(
+      tableName,
+      primaryKeyAttributes,
+      primaryKeyAttributesMap => {
+        val deleteRequest = DeleteRequest.builder().key(primaryKeyAttributesMap).build
+        WriteRequest.builder().deleteRequest(deleteRequest).build
+      }
+    )
+
   /** Writes a single item to DynamoDb
     *
     * @param dynamoDbWriteRequest
@@ -57,6 +83,7 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
       .map(_.sdkHttpResponse().statusCode())
 
   /** Writes the list of items of type T to Dynamo. Unprocessed items will be retried
+    *
     * @param tableName
     *   The name of the table
     * @param items
@@ -71,30 +98,17 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
   def writeItems[T <: Product](tableName: String, items: List[T])(using
       format: DynamoFormat[T]
   ): F[List[BatchWriteItemResponse]] =
-    items
-      .grouped(25)
-      .toList
-      .map { batchedItems =>
-        val valuesToWrite: List[WriteRequest] = batchedItems
-          .map(format.write)
-          .map(_.toAttributeValue.m())
-          .map { itemMap =>
-            val putRequest = PutRequest.builder().item(itemMap).build
-            WriteRequest.builder().putRequest(putRequest).build
-          }
-        Async[F].tailRecM(valuesToWrite) { reqs =>
-          val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> reqs.asJava).asJava).build()
-          dynamoDBClient.batchWriteItem(req).liftF.map {
-            case resUnprocessed
-                if resUnprocessed.hasUnprocessedItems && resUnprocessed.unprocessedItems.containsKey(tableName) =>
-              Left(resUnprocessed.unprocessedItems.get(tableName).asScala.toList)
-            case res => Right(res)
-          }
-        }
+    writeOrDeleteItems(
+      tableName,
+      items,
+      itemMap => {
+        val putRequest = PutRequest.builder().item(itemMap).build
+        WriteRequest.builder().putRequest(putRequest).build
       }
-      .sequence
+    )
 
   /** Returns a list of items of type T which match the list of primary keys
+    *
     * @param primaryKeys
     *   A list of primary keys of type K. The case class of type K should match the table primary key.
     * @param tableName
@@ -192,6 +206,34 @@ class DADynamoDBClient[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient):
       .query(queryRequest)
       .liftF
       .flatMap(res => validateAndConvertAttributeValuesList(res.items()))
+
+  private def writeOrDeleteItems[T](
+      tableName: String,
+      items: List[T],
+      mapToWriteRequest: util.Map[String, AttributeValue] => WriteRequest
+  )(using
+      format: DynamoFormat[T]
+  ) = {
+    items
+      .grouped(25)
+      .toList
+      .map { batchedItems =>
+        val valuesToWrite: List[WriteRequest] = batchedItems
+          .map(format.write)
+          .map(_.toAttributeValue.m())
+          .map(mapToWriteRequest)
+        Async[F].tailRecM(valuesToWrite) { reqs =>
+          val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> reqs.asJava).asJava).build()
+          dynamoDBClient.batchWriteItem(req).liftF.map {
+            case resUnprocessed
+                if resUnprocessed.hasUnprocessedItems && resUnprocessed.unprocessedItems.containsKey(tableName) =>
+              Left(resUnprocessed.unprocessedItems.get(tableName).asScala.toList)
+            case res => Right(res)
+          }
+        }
+      }
+      .sequence
+  }
 
   private def validateAndConvertAttributeValuesList[T](
       attributeValuesList: util.List[util.Map[String, AttributeValue]]

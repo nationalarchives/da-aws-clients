@@ -33,9 +33,13 @@ class DADynamoDBClientTest
     with TableDrivenPropertyChecks
     with NonImplicitAssertions {
   case class Pk(mockPrimaryKeyName: String)
+
   trait MockResponse extends Product
+
   case class MockNestedRequest(mockSingleAttributeResponse: MockSingleAttributeRequest)
+
   case class MockTwoAttributesRequest(mockAttribute: String, mockAttribute2: String) extends MockResponse
+
   case class MockSingleAttributeRequest(mockAttribute: String) extends MockResponse
 
   val primaryKeysTable: TableFor2[List[Pk], FieldName] = Table(
@@ -295,7 +299,23 @@ class DADynamoDBClientTest
     }
   }
 
-  val writeItemsTable: TableFor2[List[MockResponse], FieldName] = Table(
+  val writeAndDeleteTable
+      : TableFor2[String, (DADynamoDBClient[IO], String, List[MockResponse]) => IO[List[BatchWriteItemResponse]]] =
+    Table(
+      ("functionName", "function"),
+      (
+        "deleteItems",
+        (client: DADynamoDBClient[IO], tableName: String, items: List[MockResponse]) =>
+          client.deleteItems(tableName, items)
+      ),
+      (
+        "writeItems",
+        (client: DADynamoDBClient[IO], tableName: String, items: List[MockResponse]) =>
+          client.writeItems(tableName, items)
+      )
+    )
+
+  val writeAndDeleteItemsTable: TableFor2[List[MockResponse], FieldName] = Table(
     ("input", "expectedAttributeNamesAndValues"),
     (List(MockSingleAttributeRequest("mockValue")), "{mockAttribute=AttributeValue(S=mockValue)}"),
     (
@@ -315,75 +335,88 @@ class DADynamoDBClientTest
     )
   )
 
-  forAll(writeItemsTable) { (input, expectedAttributeNamesAndValues) =>
-    "writeItems" should s"send the correct table name and $expectedAttributeNamesAndValues to the BatchWriteItemRequest" in {
+  forAll(writeAndDeleteTable) { (functionName, writeOrDeleteFunction) =>
+    forAll(writeAndDeleteItemsTable) { (input, expectedAttributeNamesAndValues) =>
+      functionName should s"send the correct table name and $expectedAttributeNamesAndValues to the BatchWriteItemRequest" in {
+        val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+        val sdkHttpResponse = SdkHttpResponse
+          .builder()
+          .statusCode(200)
+          .build()
+        val writeItemResponse = BatchWriteItemResponse.builder
+          .unprocessedItems(java.util.Map.of())
+        writeItemResponse.sdkHttpResponse(sdkHttpResponse)
+        val writeCaptor: ArgumentCaptor[BatchWriteItemRequest] = ArgumentCaptor.forClass(classOf[BatchWriteItemRequest])
+
+        when(mockDynamoDbAsyncClient.batchWriteItem(writeCaptor.capture()))
+          .thenReturn(CompletableFuture.completedFuture(writeItemResponse.build()))
+        val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+        val responses = writeOrDeleteFunction(client, "table", input).unsafeRunSync()
+
+        responses.foreach(_.sdkHttpResponse().statusCode() should equal(200))
+
+        writeCaptor.getAllValues.size should equal(1)
+        val batchWriteItemRequest = writeCaptor.getAllValues.asScala.head
+        val batchWriteItemRequestKeys = batchWriteItemRequest.requestItems().keySet().asScala
+        batchWriteItemRequestKeys.size should equal(1)
+        batchWriteItemRequestKeys.head should equal("table")
+        val batchWriteItemRequestValues =
+          batchWriteItemRequest.requestItems().get(batchWriteItemRequestKeys.head).asScala
+        batchWriteItemRequestValues.size should equal(input.length)
+        val attributeNameAndValues =
+          if functionName == "deleteItems" then
+            batchWriteItemRequestValues.map(_.deleteRequest().key().toString).mkString(" ")
+          else batchWriteItemRequestValues.map(_.putRequest().item().toString).mkString(" ")
+
+        attributeNameAndValues should equal(expectedAttributeNamesAndValues)
+      }
+    }
+
+    functionName should "call the dynamo client again if there are unprocessed items" in {
       val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
-      val sdkHttpResponse = SdkHttpResponse
-        .builder()
-        .statusCode(200)
-        .build()
-      val writeItemResponse = BatchWriteItemResponse.builder
-        .unprocessedItems(java.util.Map.of())
-      writeItemResponse.sdkHttpResponse(sdkHttpResponse)
+      val input = List(MockSingleAttributeRequest("mockValue"))
+      val keyMap = Map("unprocessedKey" -> AttributeValue.builder.s("unprocessedValue").build).asJava
+      val unprocessedWriteRequest =
+        if functionName == "deleteItems" then
+          WriteRequest.builder.deleteRequest(DeleteRequest.builder.key(keyMap).build).build
+        else WriteRequest.builder.putRequest(PutRequest.builder.item(keyMap).build).build
+      val writeItemResponseWithUnprocessed = BatchWriteItemResponse.builder
+        .unprocessedItems(Map("table" -> List(unprocessedWriteRequest).asJava).asJava)
+        .build
       val writeCaptor: ArgumentCaptor[BatchWriteItemRequest] = ArgumentCaptor.forClass(classOf[BatchWriteItemRequest])
 
       when(mockDynamoDbAsyncClient.batchWriteItem(writeCaptor.capture()))
-        .thenReturn(CompletableFuture.completedFuture(writeItemResponse.build()))
+        .thenReturn(CompletableFuture.completedFuture(writeItemResponseWithUnprocessed))
+        .thenReturn(CompletableFuture.completedFuture(BatchWriteItemResponse.builder.build))
       val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
-      val responses = client.writeItems("table", input).unsafeRunSync()
 
-      responses.foreach(_.sdkHttpResponse().statusCode() should equal(200))
+      val responses = writeOrDeleteFunction(client, "table", input).unsafeRunSync()
 
-      writeCaptor.getAllValues.size should equal(1)
-      val batchWriteItemRequest = writeCaptor.getAllValues.asScala.head
-      val batchWriteItemRequestKeys = batchWriteItemRequest.requestItems().keySet().asScala
-      batchWriteItemRequestKeys.size should equal(1)
-      batchWriteItemRequestKeys.head should equal("table")
-      val batchWriteItemRequestValues =
-        batchWriteItemRequest.requestItems().get(batchWriteItemRequestKeys.head).asScala
-      batchWriteItemRequestValues.size should equal(input.length)
-      val attributeNameAndValues = batchWriteItemRequestValues.map(_.putRequest().item().toString).mkString(" ")
+      verify(mockDynamoDbAsyncClient, times(2)).batchWriteItem(any[BatchWriteItemRequest])
 
-      attributeNameAndValues should equal(expectedAttributeNamesAndValues)
+      val writeRequests = writeCaptor.getAllValues.asScala
+
+      def getValue(batchWriteItemRequest: BatchWriteItemRequest, key: String) = {
+        val writeRequest = batchWriteItemRequest.requestItems().asScala.flatMap(_._2.asScala).head
+        if functionName == "deleteItems" then writeRequest.deleteRequest().key().get(key).s()
+        else writeRequest.putRequest().item.get(key).s()
+      }
+
+      getValue(writeRequests.head, "mockAttribute") should equal("mockValue")
+      getValue(writeRequests.last, "unprocessedKey") should equal("unprocessedValue")
     }
-  }
 
-  "writeItems" should "call the dynamo client again if there are unprocessed items" in {
-    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
-    val input = List(MockSingleAttributeRequest("mockValue"))
-    val putRequest =
-      PutRequest.builder.item(Map("unprocessedKey" -> AttributeValue.builder.s("unprocessedValue").build).asJava).build
-    val unprocessedWriteRequest = WriteRequest.builder.putRequest(putRequest).build
-    val writeItemResponseWithUnprocessed = BatchWriteItemResponse.builder
-      .unprocessedItems(Map("table" -> List(unprocessedWriteRequest).asJava).asJava)
-      .build
-    val writeCaptor: ArgumentCaptor[BatchWriteItemRequest] = ArgumentCaptor.forClass(classOf[BatchWriteItemRequest])
+    functionName should "return an error if the dynamo client returns an error" in {
+      val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+      when(mockDynamoDbAsyncClient.batchWriteItem(any[BatchWriteItemRequest]))
+        .thenThrow(new RuntimeException("Error writing to dynamo"))
 
-    when(mockDynamoDbAsyncClient.batchWriteItem(writeCaptor.capture()))
-      .thenReturn(CompletableFuture.completedFuture(writeItemResponseWithUnprocessed))
-      .thenReturn(CompletableFuture.completedFuture(BatchWriteItemResponse.builder.build))
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
-    val responses = client.writeItems("table", input).unsafeRunSync()
-
-    verify(mockDynamoDbAsyncClient, times(2)).batchWriteItem(any[BatchWriteItemRequest])
-
-    val writeRequests = writeCaptor.getAllValues.asScala
-    def getValue(batchWriteItemRequest: BatchWriteItemRequest, key: String) =
-      batchWriteItemRequest.requestItems().asScala.flatMap(_._2.asScala).head.putRequest().item.get(key).s()
-    getValue(writeRequests.head, "mockAttribute") should equal("mockValue")
-    getValue(writeRequests.last, "unprocessedKey") should equal("unprocessedValue")
-  }
-
-  "writeItems" should "return an error if the dynamo client returns an error" in {
-    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
-    when(mockDynamoDbAsyncClient.batchWriteItem(any[BatchWriteItemRequest]))
-      .thenThrow(new RuntimeException("Error writing to dynamo"))
-
-    val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
-    val ex = intercept[Exception] {
-      client.writeItems("table", List(MockSingleAttributeRequest("mockValue"))).unsafeRunSync()
+      val client = new DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+      val ex = intercept[Exception] {
+        writeOrDeleteFunction(client, "table", List(MockSingleAttributeRequest("mockValue"))).unsafeRunSync()
+      }
+      ex.getMessage should equal("Error writing to dynamo")
     }
-    ex.getMessage should equal("Error writing to dynamo")
   }
 
   // For some reason the compiler is ignoring the implicit conversions when these are inside the table
