@@ -451,7 +451,7 @@ class DADynamoDBClientTest
 
       val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
-      client.queryItems[MockSingleAttributeRequest]("testTable", "indexName", query).unsafeRunSync()
+      client.queryItems[MockSingleAttributeRequest]("testTable", query, Option("indexName")).unsafeRunSync()
 
       val queryRequestValue = queryRequestCaptor.getValue
 
@@ -479,7 +479,7 @@ class DADynamoDBClientTest
 
     val client = createDynamoClientFromItems(items)
     val queryItemsResponseF: IO[List[MockTwoAttributesRequest]] =
-      client.queryItems[MockTwoAttributesRequest]("testTable", "indexName", "mockAttribute" > 0)
+      client.queryItems[MockTwoAttributesRequest]("testTable", "mockAttribute" > 0, Option("indexName"))
     val queryItemsResponse = queryItemsResponseF.unsafeRunSync()
 
     queryItemsResponse.head.mockAttribute should equal("mockAttributeValue")
@@ -496,8 +496,8 @@ class DADynamoDBClientTest
     val queryItemsResponse = client
       .queryItems[MockTwoAttributesRequest](
         "testTable",
-        "indexName",
-        "mockAttribute" === "mockAttributeValue" and "asdasd" === ""
+        "mockAttribute" === "mockAttributeValue" and "asdasd" === "",
+        Option("indexName")
       )
       .unsafeRunSync()
 
@@ -514,7 +514,11 @@ class DADynamoDBClientTest
 
     val ex = intercept[Exception] {
       client
-        .queryItems[MockSingleAttributeRequest]("testTable", "indexName", "mockAttribute" === "mockAttributeValue")
+        .queryItems[MockSingleAttributeRequest](
+          "testTable",
+          "mockAttribute" === "mockAttributeValue",
+          Option("indexName")
+        )
         .unsafeRunSync()
     }
     ex.getMessage should equal("'mockAttribute': not of type: 'S' was 'DynNum(1)'")
@@ -529,7 +533,7 @@ class DADynamoDBClientTest
 
     val ex = intercept[Exception] {
       client
-        .queryItems[MockNestedRequest]("testTable", "indexName", "mockAttribute" === "mockAttributeValue")
+        .queryItems[MockNestedRequest]("testTable", "mockAttribute" === "mockAttributeValue", Option("indexName"))
         .unsafeRunSync()
     }
     ex.getMessage should equal("'mockSingleAttributeResponse': missing")
@@ -546,7 +550,7 @@ class DADynamoDBClientTest
 
     val ex = intercept[Exception] {
       client
-        .queryItems[MockNestedRequest]("testTable", "indexName", "mockAttribute" === "mockAttributeValue")
+        .queryItems[MockNestedRequest]("testTable", "mockAttribute" === "mockAttributeValue", Option("indexName"))
         .unsafeRunSync()
     }
     ex.getMessage should be("Table name could not be found")

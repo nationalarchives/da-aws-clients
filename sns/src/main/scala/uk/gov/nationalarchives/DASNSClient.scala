@@ -4,7 +4,6 @@ import cats.effect.Async
 import cats.implicits._
 import io.circe.syntax._
 import io.circe.{Encoder, Printer}
-import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sns.SnsAsyncClient
@@ -40,17 +39,12 @@ trait DASNSClient[F[_]: Async]:
   )(messages: List[T])(using enc: Encoder[T]): F[List[PublishBatchResponse]]
 
 object DASNSClient:
-  def apply[F[_]: Async](): DASNSClient[F] = {
-    lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
+  lazy val snsClient: SnsAsyncClient = SnsAsyncClient.builder
+    .region(Region.EU_WEST_2)
+    .httpClient(NettyNioAsyncHttpClient.builder().build())
+    .build()
 
-    lazy val snsClient: SnsAsyncClient = SnsAsyncClient.builder
-      .region(Region.EU_WEST_2)
-      .httpClient(httpClient)
-      .build()
-    DASNSClient[F](snsClient)
-  }
-
-  def apply[F[_]: Async](snsAsyncClient: SnsAsyncClient): DASNSClient[F] = new DASNSClient[F]() {
+  def apply[F[_]: Async](snsAsyncClient: SnsAsyncClient = snsClient): DASNSClient[F] = new DASNSClient[F]() {
     override def publish[T <: Product](topicArn: String)(messages: List[T])(using
         enc: Encoder[T]
     ): F[List[PublishBatchResponse]] =
