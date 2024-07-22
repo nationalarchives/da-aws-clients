@@ -30,7 +30,7 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val mockResponse = CompletableFuture.completedFuture(PublishBatchResponse.builder().build())
     when(snsAsyncClient.publishBatch(publishCaptor.capture())).thenReturn(mockResponse)
 
-    val client = new DASNSClient[IO](snsAsyncClient)
+    val client = DASNSClient[IO](snsAsyncClient)
     client
       .publish("mockTopicArn")(List(Test("testMessage1", "testValue1"), Test("testMessage2", "testValue2")))
       .unsafeRunSync()
@@ -55,7 +55,7 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val messages = (1 to 23).toList.map(number => Test(s"testMessage$number", s"testValue$number"))
     val convertNumberToJsonMessage = (number: Int) => s"""{"message":"testMessage$number","value":"testValue$number"}"""
 
-    val client = new DASNSClient[IO](snsAsyncClient)
+    val client = DASNSClient[IO](snsAsyncClient)
     client.publish("mockTopicArn")(messages).unsafeRunSync()
 
     val publishedBatchRequests: List[PublishBatchRequest] = publishCaptor.getAllValues.asScala.toList
@@ -82,7 +82,7 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val snsAsyncClient = mock[SnsAsyncClient]
     when(snsAsyncClient.publishBatch(any[PublishBatchRequest])).thenThrow(new RuntimeException("Error sending message"))
 
-    val client = new DASNSClient[IO](snsAsyncClient)
+    val client = DASNSClient[IO](snsAsyncClient)
 
     val ex = intercept[Exception] {
       client
@@ -103,7 +103,7 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val messages = (1 to 15).toList.map(number => Test(s"testMessage$number", s"testValue$number"))
     val convertNumberToJsonMessage = (number: Int) => s"""{"message":"testMessage$number","value":"testValue$number"}"""
 
-    val client = new DASNSClient[IO](snsAsyncClient)
+    val client = DASNSClient[IO](snsAsyncClient)
     val ex = intercept[Exception] {
       client.publish("mockTopicArn")(messages).unsafeRunSync()
     }
@@ -136,7 +136,7 @@ class DASNSClientTest extends AnyFlatSpec with MockitoSugar {
     val messages = (1 to 15).toList.map(number => Test(s"testMessage$number", s"testValue$number"))
     val convertNumberToJsonMessage = (number: Int) => s"""{"message":"testMessage$number","value":"testValue$number"}"""
 
-    val client = new DASNSClient[IO](snsAsyncClient)
+    val client = DASNSClient[IO](snsAsyncClient)
     val ex = intercept[Exception] {
       client.publish("mockTopicArn")(messages).unsafeRunSync()
     }
