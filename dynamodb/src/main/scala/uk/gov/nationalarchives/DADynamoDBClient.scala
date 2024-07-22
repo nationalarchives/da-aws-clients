@@ -74,7 +74,7 @@ trait DADynamoDBClient[F[_]: Async]:
 
   /** @param tableName
     *   The name of the table
-    * @param gsiName
+    * @param potentialGsiName
     *   The optional name of the global secondary index
     * @param requestCondition
     *   This is not passed in directly. You construct either a Query[_] or a ConditionExpression instance. This is then
