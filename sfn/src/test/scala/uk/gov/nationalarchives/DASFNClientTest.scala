@@ -27,7 +27,7 @@ class DASFNClientTest extends AnyFlatSpec with MockitoSugar {
     val mockResponse = CompletableFuture.completedFuture(StartExecutionResponse.builder().build())
     when(sfnAsyncClient.startExecution(startExecutionRequestCaptor.capture())).thenReturn(mockResponse)
 
-    val client = new DASFNClient[IO](sfnAsyncClient)
+    val client = DASFNClient[IO](sfnAsyncClient)
     client.startExecution(arn, TestInput("testMessage", "testValue")).unsafeRunSync()
 
     val request = startExecutionRequestCaptor.getValue
@@ -43,7 +43,7 @@ class DASFNClientTest extends AnyFlatSpec with MockitoSugar {
     val mockResponse = CompletableFuture.completedFuture(StartExecutionResponse.builder().build())
     when(sfnAsyncClient.startExecution(startExecutionRequestCaptor.capture())).thenReturn(mockResponse)
 
-    val client = new DASFNClient[IO](sfnAsyncClient)
+    val client = DASFNClient[IO](sfnAsyncClient)
 
     client.startExecution(arn, TestInput("testMessage", "testValue"), Option("testName")).unsafeRunSync()
 
@@ -58,7 +58,7 @@ class DASFNClientTest extends AnyFlatSpec with MockitoSugar {
     when(sfnAsyncClient.startExecution(any[StartExecutionRequest]))
       .thenThrow(new RuntimeException("Error starting execution"))
 
-    val client = new DASFNClient[IO](sfnAsyncClient)
+    val client = DASFNClient[IO](sfnAsyncClient)
 
     val ex = intercept[Exception] {
       client.startExecution(arn, TestInput("testMessage", "testValue"), Option("testName")).unsafeRunSync()

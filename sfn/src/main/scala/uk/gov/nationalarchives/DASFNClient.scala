@@ -12,12 +12,10 @@ import software.amazon.awssdk.services.sfn.model.{StartExecutionRequest, StartEx
 /** An SFN client. It is written generically so can be used for any effect which has an Async instance. Requires an
   * implicit instance of cats Async which is used to convert CompletableFuture to F
   *
-  * @param sfnAsyncClient
-  *   An AWS SFN Async client
   * @tparam F
   *   Type of the effect
   */
-class DASFNClient[F[_]: Async](sfnAsyncClient: SfnAsyncClient):
+trait DASFNClient[F[_]: Async]:
 
   /** @param stateMachineArn
     *   The arn of the state machine to start
@@ -34,25 +32,32 @@ class DASFNClient[F[_]: Async](sfnAsyncClient: SfnAsyncClient):
     */
   def startExecution[T <: Product](stateMachineArn: String, input: T, name: Option[String] = None)(using
       enc: Encoder[T]
-  ): F[StartExecutionResponse] =
-    val builder = StartExecutionRequest.builder()
-    val inputString = input.asJson.printWith(Printer.noSpaces)
-
-    val startExecutionRequest: StartExecutionRequest = name
-      .map(builder.name)
-      .getOrElse(builder)
-      .stateMachineArn(stateMachineArn)
-      .input(inputString)
-      .build()
-
-    Async[F].fromCompletableFuture(Async[F].pure(sfnAsyncClient.startExecution(startExecutionRequest)))
+  ): F[StartExecutionResponse]
 
 object DASFNClient:
-  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
 
-  private lazy val sfnClient: SfnAsyncClient = SfnAsyncClient.builder
-    .region(Region.EU_WEST_2)
-    .httpClient(httpClient)
-    .build()
+  def apply[F[_]: Async](sfnAsyncClient: SfnAsyncClient): DASFNClient[F] = new DASFNClient[F]:
+    override def startExecution[T <: Product](stateMachineArn: String, input: T, name: Option[String] = None)(using
+        enc: Encoder[T]
+    ): F[StartExecutionResponse] =
+      val builder = StartExecutionRequest.builder()
+      val inputString = input.asJson.printWith(Printer.noSpaces)
 
-  def apply[F[_]: Async]() = new DASFNClient[F](sfnClient)
+      val startExecutionRequest: StartExecutionRequest = name
+        .map(builder.name)
+        .getOrElse(builder)
+        .stateMachineArn(stateMachineArn)
+        .input(inputString)
+        .build()
+
+      Async[F].fromCompletableFuture(Async[F].pure(sfnAsyncClient.startExecution(startExecutionRequest)))
+
+  def apply[F[_]: Async](): DASFNClient[F] = {
+    lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
+
+    lazy val sfnClient: SfnAsyncClient = SfnAsyncClient.builder
+      .region(Region.EU_WEST_2)
+      .httpClient(httpClient)
+      .build()
+    DASFNClient[F](sfnClient)
+  }
