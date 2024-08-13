@@ -2,7 +2,7 @@ import sbt._
 
 object Dependencies {
   private val awsSdkVersion = "2.26.31"
-  private val circeVersion = "0.14.9"
+  val circeVersion = "0.14.9"
   private lazy val scalaTestVersion = "3.2.19"
 
   lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.30.5"
@@ -12,12 +12,13 @@ object Dependencies {
   lazy val circeParser = "io.circe" %% "circe-parser" % circeVersion
   lazy val circe = "io.circe" %% "circe-core" % circeVersion
   lazy val dynamoDB = "software.amazon.awssdk" % "dynamodb" % awsSdkVersion
+  lazy val dynosaur = "org.systemfw" %% "dynosaur-core" % "0.7.0"
   lazy val eventBridgeSdk = "software.amazon.awssdk" % "eventbridge" % awsSdkVersion
   lazy val mockito = "org.scalatestplus" %% "mockito-5-10" % s"3.2.18.0"
   lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.6.8"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val scalaTest = "org.scalatest" %% "scalatest" % scalaTestVersion
-  lazy val scanamo = "org.scanamo" %% "scanamo" % "2.0.0"
+//  lazy val scanamo = "org.scanamo" %% "scanamo" % "2.0.0"
   lazy val snsSdk = "software.amazon.awssdk" % "sns" % awsSdkVersion
   lazy val sfnSdk = "software.amazon.awssdk" % "sfn" % awsSdkVersion
   lazy val sqsSdk = "software.amazon.awssdk" % "sqs" % awsSdkVersion

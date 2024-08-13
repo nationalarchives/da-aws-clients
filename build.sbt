@@ -4,10 +4,10 @@ import sbtrelease.ReleaseStateTransformations.*
 lazy val root = (project in file("."))
   .settings(
     name := "da-aws-clients",
-    publish / skip := true
+    publish / skip := true,
   )
   .settings(commonSettings)
-  .aggregate(sqs, sns, s3, dynamoDb, eventBridge, sfn, secretsManager)
+  .aggregate(sqs, sns, s3.jvm, s3.js, dynamoDb.jvm, dynamoDb.js, eventBridge, sfn, secretsManager)
 
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
@@ -57,16 +57,38 @@ lazy val commonSettings = Seq(
   )
 )
 
-lazy val dynamoDb = (project in file("dynamodb"))
-  .settings(commonSettings)
+lazy val dynamoDb = (crossProject(JSPlatform, JVMPlatform) in file("dynamodb"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "cats-core" % "2.12.0",
+      "org.typelevel" %%% "cats-effect" % "3.5.4",
+      "io.circe" %%% "circe-core" % circeVersion,
+      "io.circe" %%% "circe-generic" % circeVersion,
+
+    ),
+    scalaVersion := "3.4.2",
+    organization := "uk.gov.nationalarchives",
+    version := version.value
+  )
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      mockito % Test,
+      scalaTest % Test
+    )
+  )
+  .jsSettings(
+    Compile / npmDependencies ++= Seq(
+      "@aws-sdk/client-dynamodb" -> "3.629.0",
+    )
+  )
   .settings(
     name := "da-dynamodb-client",
     description := "A project containing useful methods for interacting with DynamoDb",
     libraryDependencies ++= Seq(
       dynamoDB,
-      scanamo
+      dynosaur,
     )
-  )
+  ).enablePlugins(ScalablyTypedConverterPlugin, ScalaJSPlugin)
 
 lazy val eventBridge = (project in file("eventbridge"))
   .settings(commonSettings)
@@ -78,8 +100,34 @@ lazy val eventBridge = (project in file("eventbridge"))
     )
   )
 
-lazy val s3 = (project in file("s3"))
-  .settings(commonSettings)
+lazy val s3 = (crossProject(JSPlatform, JVMPlatform) in file("s3"))
+  .settings(
+
+    scalaVersion := "3.4.2",
+    version := version.value,
+    organization := "uk.gov.nationalarchives",
+  )
+  .jsSettings(
+    Compile / npmDependencies ++= Seq(
+      "@aws-sdk/client-s3" -> "3.629.0",
+    ),
+    libraryDependencies ++= Seq(
+      "org.typelevel" %%% "cats-core" % "2.12.0",
+      "org.typelevel" %%% "cats-effect" % "3.5.4",
+      "io.circe" %%% "circe-core" % circeVersion,
+      "io.circe" %%% "circe-generic" % circeVersion,
+    ),
+  )
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      "org.typelevel" %% "cats-core" % "2.12.0",
+      "org.typelevel" %% "cats-effect" % "3.5.4",
+      "io.circe" %% "circe-core" % circeVersion,
+      "io.circe" %% "circe-generic" % circeVersion,
+      mockito % Test,
+      scalaTest % Test
+    )
+  )
   .settings(
     name := "da-s3-client",
     description := "A project containing useful methods for interacting with S3",
@@ -89,7 +137,7 @@ lazy val s3 = (project in file("s3"))
       awsCrt,
       reactorTest % Test
     )
-  )
+  ).enablePlugins(ScalablyTypedConverterPlugin, ScalaJSPlugin)
 
 lazy val sqs = (project in file("sqs"))
   .settings(commonSettings)

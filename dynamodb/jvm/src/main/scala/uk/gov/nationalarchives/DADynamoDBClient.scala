@@ -2,20 +2,19 @@ package uk.gov.nationalarchives
 
 import cats.effect.Async
 import cats.implicits.*
-import org.scanamo.DynamoReadError.*
-import org.scanamo.*
-import org.scanamo.query.{Condition as ScanamoCondition, *}
-import org.scanamo.request.RequestCondition
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient
+import software.amazon.awssdk.services.dynamodb.{DynamoDbAsyncClient, DynamoDbClient}
 import software.amazon.awssdk.services.dynamodb.model.{KeysAndAttributes, *}
 import uk.gov.nationalarchives.DADynamoDBClient.*
+import dynosaur.*
+import software.amazon.awssdk.http.apache.ApacheHttpClient
 
 import java.util
 import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters.*
+import scala.jdk.FutureConverters.*
 import scala.language.{implicitConversions, postfixOps}
 
 /** An DynamoDbAsync client. It is written generically so can be used for any effect which has an Async instance.
@@ -42,7 +41,7 @@ trait DADynamoDBClient[F[_]: Async]:
     *   The List of BatchWriteItemResponse wrapped with F[_]
     */
   def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using
-      DynamoFormat[T]
+      Schema[T]
   ): F[List[BatchWriteItemResponse]]
 
   /** Writes a single item to DynamoDb
@@ -69,7 +68,7 @@ trait DADynamoDBClient[F[_]: Async]:
     *   The List of BatchWriteItemResponse wrapped with F[_]
     */
   def writeItems[T](tableName: String, items: List[T])(using
-      format: DynamoFormat[T]
+      format: Schema[T]
   ): F[List[BatchWriteItemResponse]]
 
   /** @param tableName
@@ -87,7 +86,7 @@ trait DADynamoDBClient[F[_]: Async]:
     *   A list of type U wrapped in the F effect
     */
   def queryItems[U](tableName: String, requestCondition: RequestCondition, potentialGsiName: Option[String] = None)(
-      using returnTypeFormat: DynamoFormat[U]
+      using returnTypeFormat: Schema[U]
   ): F[List[U]]
 
   /** Returns a list of items of type T which match the list of primary keys
@@ -108,8 +107,8 @@ trait DADynamoDBClient[F[_]: Async]:
     *   A list of case classes of type T which the values populated from Dynamo, wrapped with F[_]
     */
   def getItems[T, K](primaryKeys: List[K], tableName: String)(using
-      returnFormat: DynamoFormat[T],
-      keyFormat: DynamoFormat[K]
+      returnFormat: Schema[T],
+      keyFormat: Schema[K]
   ): F[List[T]]
 
   /** Updates an attribute in DynamoDb
@@ -124,14 +123,11 @@ trait DADynamoDBClient[F[_]: Async]:
 
 object DADynamoDBClient:
 
-  given [C: ConditionExpression]: Conversion[C, RequestCondition] =
-    ScanamoCondition(_).apply.runEmptyA.value
-
-  given Conversion[Query[?], RequestCondition] = _.apply
-
-  given [T: UniqueKeyCondition, U: UniqueKeyCondition](using
-      qkc: QueryableKeyCondition[AndEqualsCondition[T, U]]
-  ): Conversion[AndEqualsCondition[T, U], RequestCondition] = qkc.apply(_)
+  case class RequestCondition(
+                               expression: String,
+                               attributeNames: Map[String, String],
+                               attributeValues: Map[String, AttributeValue]
+                             )
 
   case class DADynamoDbRequest(
       tableName: String,
@@ -145,20 +141,20 @@ object DADynamoDBClient:
       conditionalExpression: Option[String] = None
   )
 
-  private lazy val dynamoDBClient: DynamoDbAsyncClient = DynamoDbAsyncClient
+  private lazy val dynamoDBClient: DynamoDbClient = DynamoDbClient
     .builder()
-    .httpClient(NettyNioAsyncHttpClient.builder().build())
+    .httpClient(ApacheHttpClient.builder().build())
     .region(Region.EU_WEST_2)
     .credentialsProvider(DefaultCredentialsProvider.create())
     .build()
 
-  def apply[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient = dynamoDBClient): DADynamoDBClient[F] =
+  def apply[F[_]: Async](dynamoDBClient: DynamoDbClient = dynamoDBClient): DADynamoDBClient[F] =
     new DADynamoDBClient[F] {
       extension [T](completableFuture: CompletableFuture[T])
-        private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
+        private def liftF: F[T] = Async[F].fromFuture(Async[F].pure(completableFuture.asScala))
 
       override def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using
-          DynamoFormat[T]
+          Schema[T]
       ): F[List[BatchWriteItemResponse]] =
         writeOrDeleteItems(
           tableName,
@@ -181,13 +177,11 @@ object DADynamoDBClient:
             .getOrElse(putItemRequestBuilder)
             .build
 
-        dynamoDBClient
-          .putItem(putItemRequest)
-          .liftF
+        Async[F].blocking(dynamoDBClient.putItem(putItemRequest))
           .map(_.sdkHttpResponse().statusCode())
 
       override def writeItems[T](tableName: String, items: List[T])(using
-          format: DynamoFormat[T]
+          format: Schema[T]
       ): F[List[BatchWriteItemResponse]] =
         writeOrDeleteItems(
           tableName,
@@ -199,12 +193,13 @@ object DADynamoDBClient:
         )
 
       override def getItems[T, K](primaryKeys: List[K], tableName: String)(using
-          returnFormat: DynamoFormat[T],
-          keyFormat: DynamoFormat[K]
+          returnFormat: Schema[T],
+          keyFormat: Schema[K]
       ): F[List[T]] =
         val primaryKeysAsAttributeValues = primaryKeys
           .map(keyFormat.write)
-          .map(_.toAttributeValue.m())
+          .flatMap(_.toOption)
+          .map(_.value.m())
           .asJava
 
         val keysAndAttributes = KeysAndAttributes.builder
@@ -215,7 +210,7 @@ object DADynamoDBClient:
           .build
 
         for
-          batchResponse <- dynamoDBClient.batchGetItem(batchGetItemRequest).liftF
+          batchResponse <- Async[F].blocking(dynamoDBClient.batchGetItem(batchGetItemRequest))
           result <- validateAndConvertAttributeValuesList[T](batchResponse.responses.get(tableName))
         yield result
 
@@ -236,35 +231,34 @@ object DADynamoDBClient:
           .attributeUpdates(attributeValueUpdates)
           .build()
 
-        dynamoDBClient
-          .updateItem(updateAttributeValueRequest)
-          .liftF
-          .map(_.sdkHttpResponse().statusCode())
+        Async[F].blocking {
+          dynamoDBClient
+            .updateItem(updateAttributeValueRequest)
+        }.map(_.sdkHttpResponse().statusCode())
 
       def queryItems[U](tableName: String, requestCondition: RequestCondition, potentialGsiName: Option[String] = None)(
-          using returnTypeFormat: DynamoFormat[U]
+          using returnTypeFormat: Schema[U]
       ): F[List[U]] =
-        val expressionAttributeValues =
-          requestCondition.dynamoValues.flatMap(_.toExpressionAttributeValues).getOrElse(util.Collections.emptyMap())
 
         val builder = QueryRequest.builder
           .tableName(tableName)
           .keyConditionExpression(requestCondition.expression)
           .expressionAttributeNames(requestCondition.attributeNames.asJava)
-          .expressionAttributeValues(expressionAttributeValues)
+          .expressionAttributeValues(requestCondition.attributeValues.asJava)
 
         val queryRequest = potentialGsiName.map(gsi => builder.indexName(gsi)).getOrElse(builder).build
-        dynamoDBClient
-          .query(queryRequest)
-          .liftF
-          .flatMap(res => validateAndConvertAttributeValuesList(res.items()))
+        Async[F].blocking {
+            dynamoDBClient
+              .query(queryRequest)
+          }.flatMap(res => validateAndConvertAttributeValuesList(res.items()))
+
 
       private def writeOrDeleteItems[T](
           tableName: String,
           items: List[T],
           mapToWriteRequest: util.Map[String, AttributeValue] => WriteRequest
       )(using
-          format: DynamoFormat[T]
+          format: Schema[T]
       ) = {
         items
           .grouped(25)
@@ -272,11 +266,12 @@ object DADynamoDBClient:
           .map { batchedItems =>
             val valuesToWrite: List[WriteRequest] = batchedItems
               .map(format.write)
-              .map(_.toAttributeValue.m())
+              .flatMap(_.toOption)
+              .map(_.value.m())
               .map(mapToWriteRequest)
             Async[F].tailRecM(valuesToWrite) { reqs =>
               val req = BatchWriteItemRequest.builder().requestItems(Map(tableName -> reqs.asJava).asJava).build()
-              dynamoDBClient.batchWriteItem(req).liftF.map {
+              Async[F].blocking(dynamoDBClient.batchWriteItem(req)).map {
                 case resUnprocessed
                     if resUnprocessed.hasUnprocessedItems && resUnprocessed.unprocessedItems.containsKey(tableName) =>
                   Left(resUnprocessed.unprocessedItems.get(tableName).asScala.toList)
@@ -289,14 +284,10 @@ object DADynamoDBClient:
 
       private def validateAndConvertAttributeValuesList[T](
           attributeValuesList: util.List[util.Map[String, AttributeValue]]
-      )(using format: DynamoFormat[T]): F[List[T]] = {
-        attributeValuesList.asScala.toList.map { res =>
-          DynamoValue.fromMap:
-            res.asScala.toMap.map { case (name, av) =>
-              name -> DynamoValue.fromAttributeValue(av)
-            }
-        } map { dynamoValue =>
-          format.read(dynamoValue).left.map(err => new RuntimeException(err.show))
+      )(using format: Schema[T]): F[List[T]] = {
+        attributeValuesList.asScala.toList.map(DynamoValue.attributeMap)
+          .map { dynamoValue =>
+          format.read(dynamoValue).left.map(err => new RuntimeException(err.message))
         } map Async[F].fromEither
       }.sequence
     }
