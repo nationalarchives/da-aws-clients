@@ -35,7 +35,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
 
     val defaultDownload = createDownloadResponse(testBytes)
     when(transferManagerMock.download(any[S3Download])).thenReturn(defaultDownload)
-    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
+    val client = DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val publisher = client.download("bucket", "key").unsafeRunSync()
 
     StepVerifier
@@ -50,7 +50,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val defaultDownload = createDownloadResponse("test".getBytes())
     when(transferManagerMock.download(downloadCaptor.capture())).thenReturn(defaultDownload)
 
-    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
+    val client = DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     client.download("bucket", "key").unsafeRunSync()
 
     val responseObjectRequest = downloadCaptor.getValue.getObjectRequest
@@ -62,7 +62,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val transferManagerMock = mock[S3TransferManager]
     when(transferManagerMock.download(any[S3Download])).thenThrow(new RuntimeException("Error downloading"))
 
-    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
+    val client = DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val ex = intercept[Exception] {
       client.download("bucket", "key").unsafeRunSync()
     }
@@ -74,9 +74,9 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val uploadResponse = createUploadResponse()
     when(transferManagerMock.upload(any[UploadRequest])).thenReturn(uploadResponse)
 
-    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
+    val client = DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val publisher = ByteBuffersAsyncRequestBody.from("application/octet-stream", "test".getBytes)
-    val response = client.upload("bucket", "key", 1, publisher).unsafeRunSync()
+    val response = client.upload("bucket", "key", publisher).unsafeRunSync()
     response.response().eTag() should equal("testEtag")
   }
 
@@ -87,9 +87,9 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val uploadResponse = createUploadResponse()
     when(transferManagerMock.upload(uploadCaptor.capture())).thenReturn(uploadResponse)
 
-    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
+    val client = DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val publisher = ByteBuffersAsyncRequestBody.from("application/octet-stream", content)
-    client.upload("bucket", "key", 1, publisher).unsafeRunSync()
+    client.upload("bucket", "key", publisher).unsafeRunSync()
 
     val requestBody = uploadCaptor.getValue.requestBody()
     requestBody.contentLength() should be(Optional.empty()) // Content length is not sent when using a Publisher
@@ -101,9 +101,9 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     when(transferManagerMock.upload(any[UploadRequest])).thenThrow(new RuntimeException("Error uploading"))
 
     val publisher = ByteBuffersAsyncRequestBody.from("application/octet-stream", "test".getBytes)
-    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
+    val client = DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val ex = intercept[Exception] {
-      client.upload("bucket", "key", 1, publisher).unsafeRunSync()
+      client.upload("bucket", "key", publisher).unsafeRunSync()
     }
     ex.getMessage should equal("Error uploading")
   }
@@ -113,7 +113,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val copyCompletedResponse = createCopyCompletedResponse()
     when(transferManagerMock.copy(any[CopyRequest])).thenReturn(copyCompletedResponse)
 
-    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
+    val client = DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val response = client.copy("sourceBucket", "sourceKey", "destinationBucket", "destinationKey").unsafeRunSync()
     response.response().versionId() should equal("version")
   }
@@ -124,7 +124,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val copyCompletedResponse = createCopyCompletedResponse()
     when(transferManagerMock.copy(copyCaptor.capture())).thenReturn(copyCompletedResponse)
 
-    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
+    val client = DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     client.copy("sourceBucket", "sourceKey", "destinationBucket", "destinationKey").unsafeRunSync()
 
     val requestBody = copyCaptor.getValue.copyObjectRequest()
@@ -139,7 +139,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val transferManagerMock = mock[S3TransferManager]
     when(transferManagerMock.copy(any[CopyRequest])).thenThrow(new RuntimeException("Error copying"))
 
-    val client = new DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
+    val client = DAS3Client[IO](transferManagerMock, mock[S3AsyncClient])
     val ex = intercept[Exception] {
       client.copy("sourceBucket", "sourceKey", "destinationBucket", "destinationKey").unsafeRunSync()
     }
