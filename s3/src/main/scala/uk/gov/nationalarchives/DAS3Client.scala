@@ -113,7 +113,13 @@ object DAS3Client:
     .s3Client(asyncClient)
     .build()
 
-  def apply[F[_]: Async](asyncClient: S3AsyncClient): DAS3Client[F] = DAS3Client(transferManager, asyncClient)
+  def apply[F[_]: Async](asyncClient: S3AsyncClient): DAS3Client[F] = {
+    val transferManager: S3TransferManager = S3TransferManager
+      .builder()
+      .s3Client(asyncClient)
+      .build()
+    DAS3Client(transferManager, asyncClient)
+  }
 
   def apply[F[_]: Async](
       transferManager: S3TransferManager = transferManager,
