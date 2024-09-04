@@ -118,7 +118,7 @@ object DAS3Client:
   }
 
   def apply[F[_]: Async](
-      transferManager: S3TransferManager = transferManager(asyncClient),
+      transferManager: S3TransferManager = transferManager(),
       asyncClient: S3AsyncClient = asyncClient
   ): DAS3Client[F] =
     new DAS3Client[F] {
