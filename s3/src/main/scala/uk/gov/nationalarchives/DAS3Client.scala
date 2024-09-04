@@ -113,11 +113,12 @@ object DAS3Client:
     .s3Client(asyncClient)
     .build()
 
-  def apply[F[_]: Async](): DAS3Client[F] = DAS3Client(transferManager, asyncClient)
-
   def apply[F[_]: Async](asyncClient: S3AsyncClient): DAS3Client[F] = DAS3Client(transferManager, asyncClient)
 
-  def apply[F[_]: Async](transferManager: S3TransferManager, asyncClient: S3AsyncClient): DAS3Client[F] =
+  def apply[F[_]: Async](
+      transferManager: S3TransferManager = transferManager,
+      asyncClient: S3AsyncClient = asyncClient
+  ): DAS3Client[F] =
     new DAS3Client[F] {
 
       def copy(
