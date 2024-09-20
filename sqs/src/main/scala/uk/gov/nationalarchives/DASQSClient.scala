@@ -1,25 +1,24 @@
 package uk.gov.nationalarchives
 
-import cats.effect.Async
-import cats.implicits._
-import io.circe.syntax._
+import cats.effect.{Async, Resource}
+import cats.effect.std.{Dispatcher, Queue}
+import cats.implicits.*
+import com.amazon.sqs.javamessaging.message.SQSTextMessage
+import com.amazon.sqs.javamessaging.{ProviderConfiguration, SQSConnectionFactory, SQSSession}
+import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Printer}
 import io.circe.parser.decode
+import jakarta.jms.{Message, MessageListener, Session}
+import software.amazon.awssdk.http.apache.ApacheHttpClient
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.{NettyNioAsyncHttpClient, ProxyConfiguration}
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{
-  DeleteMessageRequest,
-  DeleteMessageResponse,
-  ReceiveMessageRequest,
-  SendMessageRequest,
-  SendMessageResponse
-}
+import software.amazon.awssdk.services.sqs.{SqsAsyncClient, SqsClient}
+import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, DeleteMessageResponse, ReceiveMessageRequest, SendMessageRequest, SendMessageResponse}
 import uk.gov.nationalarchives.DASQSClient.MessageResponse
 
 import java.net.URI
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** An SQS client. It is written generically so can be used for any effect which has an Async instance. Requires an
   * implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -50,6 +49,7 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient):
       .messageBody(message.asJson.printWith(Printer.noSpaces))
       .build()
     Async[F].fromCompletableFuture(Async[F].pure(sqsAsyncClient.sendMessage(messageRequest)))
+
 
   /** Receives messages from the specified queue. The messages are deserialised using the implicit decoder
     * @param queueUrl
@@ -97,6 +97,7 @@ class DASQSClient[F[_]: Async](sqsAsyncClient: SqsAsyncClient):
 object DASQSClient:
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   case class MessageResponse[T](receiptHandle: String, message: T)
+  
   private lazy val sqsClient: SqsAsyncClient = SqsAsyncClient.builder
     .region(Region.EU_WEST_2)
     .httpClient(httpClient)

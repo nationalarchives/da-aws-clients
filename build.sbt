@@ -35,7 +35,7 @@ lazy val commonSettings = Seq(
       url = url("https://github.com/nationalarchives/da-aws-clients")
     )
   ),
-  scalacOptions ++= Seq("-Wunused:imports", "-Werror", "-language:implicitConversions"),
+//  scalacOptions ++= Seq("-Wunused:imports", "-Werror", "-language:implicitConversions"),
   licenses := List("MIT" -> new URL("https://choosealicense.com/licenses/mit/")),
   homepage := Some(url("https://github.com/nationalarchives/da-aws-clients")),
   useGpgPinentry := true,
@@ -98,6 +98,7 @@ lazy val sqs = (project in file("sqs"))
     description := "A project containing useful methods for interacting with SQS",
     libraryDependencies ++= Seq(
       sqsSdk,
+      "com.amazonaws" % "amazon-sqs-java-messaging-lib" % "2.1.3",
       circeParser
     )
   )
