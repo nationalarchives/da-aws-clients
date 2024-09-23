@@ -14,6 +14,7 @@ import software.amazon.awssdk.services.sqs.model.{
   DeleteMessageRequest,
   DeleteMessageResponse,
   Message,
+  MessageAttributeValue,
   ReceiveMessageRequest,
   ReceiveMessageResponse,
   SendMessageRequest,
@@ -22,6 +23,7 @@ import software.amazon.awssdk.services.sqs.model.{
 import uk.gov.nationalarchives.DASQSClient.FifoQueueConfiguration
 
 import java.util.concurrent.CompletableFuture
+import scala.jdk.CollectionConverters.*
 
 class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
 
@@ -85,7 +87,12 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     val receiveResponse = ReceiveMessageResponse
       .builder()
       .messages(
-        Message.builder().body("""{"name": "custom", "isCustom": true}""").receiptHandle("receiptHandle").build()
+        Message
+          .builder()
+          .body("""{"name": "custom", "isCustom": true}""")
+          .receiptHandle("receiptHandle")
+          .messageAttributes(Map("MessageGroupId" -> MessageAttributeValue.builder.stringValue("groupId").build).asJava)
+          .build()
       )
       .build()
 
@@ -101,6 +108,8 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     messagesResponse.size should equal(1)
     val messageResponse = messagesResponse.head
     messageResponse.receiptHandle should equal("receiptHandle")
+    messageResponse.messageGroupId.isDefined should equal(true)
+    messageResponse.messageGroupId.get should equal("groupId")
     messageResponse.message.name should equal("custom")
     messageResponse.message.isCustom should equal(true)
   }

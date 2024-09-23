@@ -76,7 +76,7 @@ trait DASQSClient[F[_]]:
 
 object DASQSClient:
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
-  case class MessageResponse[T](receiptHandle: String, message: T)
+  case class MessageResponse[T](receiptHandle: String, messageGroupId: Option[String], message: T)
   case class FifoQueueConfiguration(messageGroupId: String, messageDeduplicationId: String)
   private lazy val sqsAsyncClient: SqsAsyncClient = SqsAsyncClient.builder
     .region(Region.EU_WEST_2)
@@ -118,7 +118,11 @@ object DASQSClient:
           response.messages.asScala.toList
             .map(message =>
               for messageAsT <- Async[F].fromEither(decode[T](message.body()))
-              yield MessageResponse(message.receiptHandle, messageAsT)
+              yield {
+                val potentialMessageGroupId =
+                  message.messageAttributes().asScala.get("MessageGroupId").map(_.stringValue)
+                MessageResponse(message.receiptHandle, potentialMessageGroupId, messageAsT)
+              }
             )
             .sequence
         }
