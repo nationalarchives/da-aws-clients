@@ -1,8 +1,8 @@
 package uk.gov.nationalarchives
 
 import cats.effect.Async
-import cats.implicits._
-import io.circe.syntax._
+import cats.implicits.*
+import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Printer}
 import io.circe.parser.decode
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient
@@ -16,10 +16,10 @@ import software.amazon.awssdk.services.sqs.model.{
   SendMessageRequest,
   SendMessageResponse
 }
-import uk.gov.nationalarchives.DASQSClient.MessageResponse
+import uk.gov.nationalarchives.DASQSClient.{FifoQueueConfiguration, MessageResponse}
 
 import java.net.URI
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** An SQS client. It is written generically so can be used for any effect which has an Async instance. Requires an
   * implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -42,7 +42,9 @@ trait DASQSClient[F[_]]:
     * @return
     *   The response from the send message call wrapped with F[_]
     */
-  def sendMessage[T <: Product](queueUrl: String)(message: T, potentialMessageGroupId: Option[String] = None)(using
+  def sendMessage[T <: Product](
+      queueUrl: String
+  )(message: T, potentialFifoConfiguration: Option[FifoQueueConfiguration] = None)(using
       enc: Encoder[T]
   ): F[SendMessageResponse]
 
@@ -75,21 +77,29 @@ trait DASQSClient[F[_]]:
 object DASQSClient:
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   case class MessageResponse[T](receiptHandle: String, message: T)
+  case class FifoQueueConfiguration(messageGroupId: String, messageDeduplicationId: String)
   private lazy val sqsAsyncClient: SqsAsyncClient = SqsAsyncClient.builder
     .region(Region.EU_WEST_2)
     .httpClient(httpClient)
     .build()
 
   def apply[F[_]: Async](sqsAsyncClient: SqsAsyncClient = sqsAsyncClient): DASQSClient[F] = new DASQSClient[F] {
-    def sendMessage[T <: Product](queueUrl: String)(message: T, potentialMessageGroupId: Option[String] = None)(using
+    def sendMessage[T <: Product](
+        queueUrl: String
+    )(message: T, potentialFifoConfiguration: Option[FifoQueueConfiguration] = None)(using
         enc: Encoder[T]
     ): F[SendMessageResponse] =
       val messageRequestBuilder = SendMessageRequest.builder
         .queueUrl(queueUrl)
         .messageBody(message.asJson.printWith(Printer.noSpaces))
 
-      val messageRequest = potentialMessageGroupId
-        .map(messageGroupId => messageRequestBuilder.messageGroupId(messageGroupId).build)
+      val messageRequest = potentialFifoConfiguration
+        .map { fifoQueueConfiguration =>
+          messageRequestBuilder
+            .messageGroupId(fifoQueueConfiguration.messageGroupId)
+            .messageDeduplicationId(fifoQueueConfiguration.messageDeduplicationId)
+            .build
+        }
         .getOrElse(messageRequestBuilder.build)
 
       Async[F].fromCompletableFuture(Async[F].pure(sqsAsyncClient.sendMessage(messageRequest)))

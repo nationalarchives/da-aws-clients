@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.sqs.model.{
   SendMessageRequest,
   SendMessageResponse
 }
+import uk.gov.nationalarchives.DASQSClient.FifoQueueConfiguration
 
 import java.util.concurrent.CompletableFuture
 
@@ -36,13 +37,15 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     val mockResponse = CompletableFuture.completedFuture(SendMessageResponse.builder().build())
     when(sqsAsyncClient.sendMessage(sendMessageCaptor.capture())).thenReturn(mockResponse)
 
+    val fifoConfig = FifoQueueConfiguration("MessageGroupId", "MessageDeduplicationId")
     val client = DASQSClient[IO](sqsAsyncClient)
-    client.sendMessage("https://test")(Test("testMessage", "testValue"), Option("MessageGroupId")).unsafeRunSync()
+    client.sendMessage("https://test")(Test("testMessage", "testValue"), Option(fifoConfig)).unsafeRunSync()
 
     val sendMessageValue = sendMessageCaptor.getValue
 
     sendMessageValue.messageBody() should equal("""{"message":"testMessage","value":"testValue"}""")
     sendMessageValue.messageGroupId() should equal("MessageGroupId")
+    sendMessageValue.messageDeduplicationId() should equal("MessageDeduplicationId")
     sendMessageValue.queueUrl() should equal("https://test")
   }
 
