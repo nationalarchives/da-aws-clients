@@ -73,6 +73,7 @@ def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using Dynam
 5. The `queryItems` method takes a table name of type `String`, a global secondary index name and a Scanamo filter query. The query is converted to a Scanamo `RequestCondition` using implicits in the companion object.
 
 6. The `deleteItems` method takes a table name of type `String` and a list of objects of type `T` These objects represent a primary key in Dynamo and the implicit `DynamoFormat[T]` is used to convert the case classes.
+
 @@@ index
 
 * [Zio](zio.md)
