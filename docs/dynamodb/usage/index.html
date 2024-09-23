@@ -31,7 +31,7 @@
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.73*
+0.1.87*
 </div>
 </div>
 <div class="nav-toc">
@@ -102,7 +102,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.73*
+0.1.87*
 </div>
 </div>
 <div class="nav-toc">
@@ -173,16 +173,18 @@ val clientWithCustom = new DADynamoDBClient(dynamoDbAsyncClient)
 
 val clientWithDefault = DADynamoDBClient()
 </code></pre>
-<p>The client exposes four methods:</p>
+<p>The client exposes six methods:</p>
 <pre class="prettyprint"><code class="language-scala">def writeItem(dynamoDbWriteRequest: DADynamoDbWriteItemRequest): F[Int]
 
-def writeItems[T &lt;: Product](tableName: String, items: List[T])(implicit format: DynamoFormat[T]): F[BatchWriteItemResponse]
+def writeItems[T &lt;: Product](tableName: String, items: List[T])(using format: DynamoFormat[T]): F[BatchWriteItemResponse]
 
-def getItems[T &lt;: Product, K &lt;: Product](keys: List[K], tableName: String)(implicit returnFormat: DynamoFormat[T], keyFormat: DynamoFormat[K]): F[List[T]]
+def getItems[T &lt;: Product, K &lt;: Product](keys: List[K], tableName: String)(using returnFormat: DynamoFormat[T], keyFormat: DynamoFormat[K]): F[List[T]]
 
 def updateAttributeValues(dynamoDbRequest: DynamoDbRequest): F[Int]
 
 def queryItems[U &lt;: Product](tableName: String, gsiName: String, requestCondition: RequestCondition)(implicit returnTypeFormat: DynamoFormat[U]): F[List[U]]
+
+def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using DynamoFormat[T]): F[List[BatchWriteItemResponse]]
 </code></pre>
 <ol>
   <li>
@@ -241,7 +243,10 @@ def queryItems[U &lt;: Product](tableName: String, gsiName: String, requestCondi
   </li>
 </ul>
 <ol>
-  <li>The <code>queryItems</code> method takes a table name of type <code>String</code>, a global secondary index name and a Scanamo filter query. The query is converted to a Scanamo <code>RequestCondition</code> using implicits in the companion object.</li>
+  <li>
+  <p>The <code>queryItems</code> method takes a table name of type <code>String</code>, a global secondary index name and a Scanamo filter query. The query is converted to a Scanamo <code>RequestCondition</code> using implicits in the companion object.</p></li>
+  <li>
+  <p>The <code>deleteItems</code> method takes a table name of type <code>String</code> and a list of objects of type <code>T</code> These objects represent a primary key in Dynamo and the implicit <code>DynamoFormat[T]</code> is used to convert the case classes.</p></li>
 </ol>
 <div class="nav-next">
 <p><strong>Next:</strong> <a href="../../dynamodb/usage/zio.html">Use with Zio</a></p>
@@ -310,7 +315,7 @@ def queryItems[U &lt;: Product](tableName: String, gsiName: String, requestCondi
 <script type="text/javascript" src="../../lib/prettify/prettify.js"></script>
 <script type="text/javascript" src="../../lib/prettify/lang-scala.js"></script>
 <script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
-<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.73-SNAPSHOT', '')});</script>
+<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.87-SNAPSHOT', '')});</script>
 
 
 </html>
