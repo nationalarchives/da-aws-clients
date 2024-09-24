@@ -15,6 +15,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse
 import uk.gov.nationalarchives.DASQSClient
 import io.circe.generic.auto._ // Used to provide Encoder[T] and Decoder[T] but you can provide your own
 
+  case class FifoQueueConfiguration(messageGroupId: String, messageDeduplicationId: String)
   val sqsClient: DASQSClient[IO] = DASQSClient[IO]()
   val queueUrl = "https://queueurl"
   case class Message(value: String)
@@ -23,7 +24,8 @@ import io.circe.generic.auto._ // Used to provide Encoder[T] and Decoder[T] but 
   val responses: IO[List[String]] = for {
     res1 <- sendMessageFn(Message("message1"))
     res2 <- sendMessageFn(Message("message2"))
-  } yield List(res1.sequenceNumber(), res2.sequenceNumber())
+    res3 <- sendMessageFn(Message("message2"), Option(FifoQueueConfiguration("messageGroupId", "messageDeduplicationId")))
+  } yield List(res1.sequenceNumber(), res2.sequenceNumber(), res3.sequenceNumber())
 
   val receivedMessages: IO[List[MessageResponse[Message]]] = for {
     received <- client.receiveMessages[Message](queueUrl)
