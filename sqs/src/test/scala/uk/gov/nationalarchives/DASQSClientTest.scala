@@ -51,6 +51,23 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     sendMessageValue.queueUrl() should equal("https://test")
   }
 
+  "sendMessage" should "not send message group id and deduplication id if the fifo queue configuration is not provided" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    val sendMessageCaptor: ArgumentCaptor[SendMessageRequest] = ArgumentCaptor.forClass(classOf[SendMessageRequest])
+    val mockResponse = CompletableFuture.completedFuture(SendMessageResponse.builder().build())
+    when(sqsAsyncClient.sendMessage(sendMessageCaptor.capture())).thenReturn(mockResponse)
+
+    val client = DASQSClient[IO](sqsAsyncClient)
+    client.sendMessage("https://test")(Test("testMessage", "testValue")).unsafeRunSync()
+
+    val sendMessageValue = sendMessageCaptor.getValue
+
+    sendMessageValue.messageBody() should equal("""{"message":"testMessage","value":"testValue"}""")
+    Option(sendMessageValue.messageGroupId()) should equal(None)
+    Option(sendMessageValue.messageDeduplicationId()) should equal(None)
+    sendMessageValue.queueUrl() should equal("https://test")
+  }
+
   "sendMessage" should "return an error if there is an error sending to the queue" in {
     val sqsAsyncClient = mock[SqsAsyncClient]
     when(sqsAsyncClient.sendMessage(any[SendMessageRequest])).thenThrow(new RuntimeException("Error sending message"))

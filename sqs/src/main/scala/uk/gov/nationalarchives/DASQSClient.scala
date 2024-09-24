@@ -116,15 +116,14 @@ object DASQSClient:
         .fromCompletableFuture(Async[F].pure(sqsAsyncClient.receiveMessage(receiveRequest)))
         .flatMap { response =>
           response.messages.asScala.toList
-            .map(message =>
+            .traverse { message =>
               for messageAsT <- Async[F].fromEither(decode[T](message.body()))
               yield {
                 val potentialMessageGroupId =
                   message.messageAttributes().asScala.get("MessageGroupId").map(_.stringValue)
                 MessageResponse(message.receiptHandle, potentialMessageGroupId, messageAsT)
               }
-            )
-            .sequence
+            }
         }
 
     def deleteMessage(queueUrl: String, receiptHandle: String): F[DeleteMessageResponse] =
