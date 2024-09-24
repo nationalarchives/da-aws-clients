@@ -14,7 +14,7 @@ import software.amazon.awssdk.services.sqs.model.{
   DeleteMessageRequest,
   DeleteMessageResponse,
   Message,
-  MessageAttributeValue,
+  MessageSystemAttributeName,
   ReceiveMessageRequest,
   ReceiveMessageResponse,
   SendMessageRequest,
@@ -108,7 +108,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
           .builder()
           .body("""{"name": "custom", "isCustom": true}""")
           .receiptHandle("receiptHandle")
-          .messageAttributes(Map("MessageGroupId" -> MessageAttributeValue.builder.stringValue("groupId").build).asJava)
+          .attributes(Map(MessageSystemAttributeName.MESSAGE_GROUP_ID -> "groupId").asJava)
           .build()
       )
       .build()
