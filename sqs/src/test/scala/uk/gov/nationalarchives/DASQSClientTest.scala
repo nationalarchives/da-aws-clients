@@ -14,13 +14,16 @@ import software.amazon.awssdk.services.sqs.model.{
   DeleteMessageRequest,
   DeleteMessageResponse,
   Message,
+  MessageAttributeValue,
   ReceiveMessageRequest,
   ReceiveMessageResponse,
   SendMessageRequest,
   SendMessageResponse
 }
+import uk.gov.nationalarchives.DASQSClient.FifoQueueConfiguration
 
 import java.util.concurrent.CompletableFuture
+import scala.jdk.CollectionConverters.*
 
 class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
 
@@ -36,12 +39,32 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     val mockResponse = CompletableFuture.completedFuture(SendMessageResponse.builder().build())
     when(sqsAsyncClient.sendMessage(sendMessageCaptor.capture())).thenReturn(mockResponse)
 
-    val client = new DASQSClient[IO](sqsAsyncClient)
+    val fifoConfig = FifoQueueConfiguration("MessageGroupId", "MessageDeduplicationId")
+    val client = DASQSClient[IO](sqsAsyncClient)
+    client.sendMessage("https://test")(Test("testMessage", "testValue"), Option(fifoConfig)).unsafeRunSync()
+
+    val sendMessageValue = sendMessageCaptor.getValue
+
+    sendMessageValue.messageBody() should equal("""{"message":"testMessage","value":"testValue"}""")
+    sendMessageValue.messageGroupId() should equal("MessageGroupId")
+    sendMessageValue.messageDeduplicationId() should equal("MessageDeduplicationId")
+    sendMessageValue.queueUrl() should equal("https://test")
+  }
+
+  "sendMessage" should "not send message group id and deduplication id if the fifo queue configuration is not provided" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    val sendMessageCaptor: ArgumentCaptor[SendMessageRequest] = ArgumentCaptor.forClass(classOf[SendMessageRequest])
+    val mockResponse = CompletableFuture.completedFuture(SendMessageResponse.builder().build())
+    when(sqsAsyncClient.sendMessage(sendMessageCaptor.capture())).thenReturn(mockResponse)
+
+    val client = DASQSClient[IO](sqsAsyncClient)
     client.sendMessage("https://test")(Test("testMessage", "testValue")).unsafeRunSync()
 
     val sendMessageValue = sendMessageCaptor.getValue
 
     sendMessageValue.messageBody() should equal("""{"message":"testMessage","value":"testValue"}""")
+    Option(sendMessageValue.messageGroupId()) should equal(None)
+    Option(sendMessageValue.messageDeduplicationId()) should equal(None)
     sendMessageValue.queueUrl() should equal("https://test")
   }
 
@@ -49,7 +72,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     val sqsAsyncClient = mock[SqsAsyncClient]
     when(sqsAsyncClient.sendMessage(any[SendMessageRequest])).thenThrow(new RuntimeException("Error sending message"))
 
-    val client = new DASQSClient[IO](sqsAsyncClient)
+    val client = DASQSClient[IO](sqsAsyncClient)
 
     val ex = intercept[Exception] {
       client.sendMessage("https://test")(Test("testMessage", "testValue")).unsafeRunSync()
@@ -64,7 +87,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     val response = CompletableFuture.completedFuture(ReceiveMessageResponse.builder().build())
     when(sqsAsyncClient.receiveMessage(receiveMessageCaptor.capture())).thenReturn(response)
 
-    val client: DASQSClient[IO] = new DASQSClient[IO](sqsAsyncClient)
+    val client: DASQSClient[IO] = DASQSClient[IO](sqsAsyncClient)
 
     client.receiveMessages[Test]("https://test", maxNumberOfMessages = 20).unsafeRunSync()
 
@@ -81,7 +104,12 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     val receiveResponse = ReceiveMessageResponse
       .builder()
       .messages(
-        Message.builder().body("""{"name": "custom", "isCustom": true}""").receiptHandle("receiptHandle").build()
+        Message
+          .builder()
+          .body("""{"name": "custom", "isCustom": true}""")
+          .receiptHandle("receiptHandle")
+          .messageAttributes(Map("MessageGroupId" -> MessageAttributeValue.builder.stringValue("groupId").build).asJava)
+          .build()
       )
       .build()
 
@@ -90,13 +118,15 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     val response = CompletableFuture.completedFuture(receiveResponse)
     when(sqsAsyncClient.receiveMessage(receiveMessageCaptor.capture())).thenReturn(response)
 
-    val client: DASQSClient[IO] = new DASQSClient[IO](sqsAsyncClient)
+    val client: DASQSClient[IO] = DASQSClient[IO](sqsAsyncClient)
 
     val messagesResponse = client.receiveMessages[Custom]("https://test", maxNumberOfMessages = 20).unsafeRunSync()
 
     messagesResponse.size should equal(1)
     val messageResponse = messagesResponse.head
     messageResponse.receiptHandle should equal("receiptHandle")
+    messageResponse.messageGroupId.isDefined should equal(true)
+    messageResponse.messageGroupId.get should equal("groupId")
     messageResponse.message.name should equal("custom")
     messageResponse.message.isCustom should equal(true)
   }
@@ -106,7 +136,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     when(sqsAsyncClient.receiveMessage(any[ReceiveMessageRequest]))
       .thenThrow(new RuntimeException("Error receiving messages"))
 
-    val client = new DASQSClient[IO](sqsAsyncClient)
+    val client = DASQSClient[IO](sqsAsyncClient)
 
     val ex = intercept[Exception] {
       client.receiveMessages("https://test").unsafeRunSync()
@@ -121,7 +151,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     val mockResponse = CompletableFuture.completedFuture(DeleteMessageResponse.builder().build())
     when(sqsAsyncClient.deleteMessage(deleteMessageCaptor.capture())).thenReturn(mockResponse)
 
-    val client = new DASQSClient[IO](sqsAsyncClient)
+    val client = DASQSClient[IO](sqsAsyncClient)
     client.deleteMessage("https://test", "receiptHandle").unsafeRunSync()
 
     val deleteMessageValue = deleteMessageCaptor.getValue
@@ -135,7 +165,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     when(sqsAsyncClient.deleteMessage(any[DeleteMessageRequest]))
       .thenThrow(new RuntimeException("Error deleting message"))
 
-    val client = new DASQSClient[IO](sqsAsyncClient)
+    val client = DASQSClient[IO](sqsAsyncClient)
 
     val ex = intercept[Exception] {
       client.deleteMessage("https://test", "receiptHandle").unsafeRunSync()

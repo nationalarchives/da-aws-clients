@@ -24,7 +24,8 @@ val sendMessageFn: Message => Task[SendMessageResponse] = sqsClient.sendMessage(
 val responses: Task[List[String]] = for {
   res1 <- sendMessageFn(Message("message1"))
   res2 <- sendMessageFn(Message("message2"))
-} yield List(res1.sequenceNumber(), res2.sequenceNumber())
+  res3 <- sendMessageFn(Message("message2"), Option(FifoQueueConfiguration("messageGroupId", "messageDeduplicationId")))
+} yield List(res1.sequenceNumber(), res2.sequenceNumber(), res3.sequenceNumber())
 
 val receivedMessages: Task[List[MessageResponse[Message]]] = for {
   received <- client.receiveMessages[Message](queueUrl)
