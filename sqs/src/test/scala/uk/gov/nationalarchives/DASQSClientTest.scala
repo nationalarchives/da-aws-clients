@@ -94,6 +94,24 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     val receiveRequest = receiveMessageCaptor.getValue
     receiveRequest.maxNumberOfMessages() should equal(20)
     receiveRequest.queueUrl() should equal("https://test")
+    receiveRequest.messageSystemAttributeNames().asScala.toList should equal(
+      List(MessageSystemAttributeName.MESSAGE_GROUP_ID)
+    )
+  }
+
+  "receiveMessage" should "pass a default of 10 to max number of messages if no argument is provided" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    val receiveMessageCaptor: ArgumentCaptor[ReceiveMessageRequest] =
+      ArgumentCaptor.forClass(classOf[ReceiveMessageRequest])
+    val response = CompletableFuture.completedFuture(ReceiveMessageResponse.builder().build())
+    when(sqsAsyncClient.receiveMessage(receiveMessageCaptor.capture())).thenReturn(response)
+
+    val client: DASQSClient[IO] = DASQSClient[IO](sqsAsyncClient)
+
+    client.receiveMessages[Test]("https://test").unsafeRunSync()
+
+    val receiveRequest = receiveMessageCaptor.getValue
+    receiveRequest.maxNumberOfMessages() should equal(10)
   }
 
   "receiveMessage" should "return the decoded message with the receipt handle" in {
