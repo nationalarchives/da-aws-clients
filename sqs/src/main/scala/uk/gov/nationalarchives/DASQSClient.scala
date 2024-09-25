@@ -14,7 +14,8 @@ import software.amazon.awssdk.services.sqs.model.{
   DeleteMessageResponse,
   ReceiveMessageRequest,
   SendMessageRequest,
-  SendMessageResponse
+  SendMessageResponse,
+  MessageSystemAttributeName
 }
 import uk.gov.nationalarchives.DASQSClient.{FifoQueueConfiguration, MessageResponse}
 
@@ -110,6 +111,7 @@ object DASQSClient:
       val receiveRequest = ReceiveMessageRequest.builder
         .queueUrl(queueUrl)
         .maxNumberOfMessages(maxNumberOfMessages)
+        .messageSystemAttributeNames(MessageSystemAttributeName.MESSAGE_GROUP_ID)
         .build
 
       Async[F]
@@ -120,7 +122,7 @@ object DASQSClient:
               for messageAsT <- Async[F].fromEither(decode[T](message.body()))
               yield {
                 val potentialMessageGroupId =
-                  message.messageAttributes().asScala.get("MessageGroupId").map(_.stringValue)
+                  message.attributes.asScala.get(MessageSystemAttributeName.MESSAGE_GROUP_ID)
                 MessageResponse(message.receiptHandle, potentialMessageGroupId, messageAsT)
               }
             }
