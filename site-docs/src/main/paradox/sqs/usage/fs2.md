@@ -25,6 +25,7 @@ import io.circe.generic.auto._ // Used to provide Encoder[T] and Decoder[T] but 
     res1 <- sendMessageFn(Message("message1"))
     res2 <- sendMessageFn(Message("message2"))
     res3 <- sendMessageFn(Message("message2"), Option(FifoQueueConfiguration("messageGroupId", "messageDeduplicationId")))
+    res4 <- sendMessageFn(Message("message2"), None, 10)
   } yield List(res1.sequenceNumber(), res2.sequenceNumber(), res3.sequenceNumber())
 
   val receivedMessages: IO[List[MessageResponse[Message]]] = for {

@@ -4,7 +4,7 @@ The client exposes three methods
 ```scala
 case class FifoQueueConfiguration(messageGroupId: String, messageDeduplicationId: String)
 
-def sendMessage[T](queueUrl: String)(message: T, potentialFifoConfiguration: Option[FifoQueueConfiguration] = None)(using enc: Encoder[T]): F[SendMessageResponse]
+def sendMessage[T](queueUrl: String)(message: T, potentialFifoConfiguration: Option[FifoQueueConfiguration] = None, delaySeconds: Int = 0)(using enc: Encoder[T]): F[SendMessageResponse]
 
 def receiveMessages[T](queueUrl: String, maxNumberOfMessages: Int = 10)(implicit dec: Decoder[T]): F[List[MessageResponse[T]]]
 
