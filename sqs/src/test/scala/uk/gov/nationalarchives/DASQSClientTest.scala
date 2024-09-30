@@ -41,7 +41,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
 
     val fifoConfig = FifoQueueConfiguration("MessageGroupId", "MessageDeduplicationId")
     val client = DASQSClient[IO](sqsAsyncClient)
-    client.sendMessage("https://test")(Test("testMessage", "testValue"), Option(fifoConfig)).unsafeRunSync()
+    client.sendMessage("https://test")(Test("testMessage", "testValue"), Option(fifoConfig), 10).unsafeRunSync()
 
     val sendMessageValue = sendMessageCaptor.getValue
 
@@ -49,6 +49,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     sendMessageValue.messageGroupId() should equal("MessageGroupId")
     sendMessageValue.messageDeduplicationId() should equal("MessageDeduplicationId")
     sendMessageValue.queueUrl() should equal("https://test")
+    sendMessageValue.delaySeconds() should equal(10)
   }
 
   "sendMessage" should "not send message group id and deduplication id if the fifo queue configuration is not provided" in {
@@ -78,6 +79,20 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
       client.sendMessage("https://test")(Test("testMessage", "testValue")).unsafeRunSync()
     }
     ex.getMessage should equal("Error sending message")
+  }
+
+  "sendMessage" should "set the delay seconds value to zero if no value is provided" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    val sendMessageCaptor: ArgumentCaptor[SendMessageRequest] = ArgumentCaptor.forClass(classOf[SendMessageRequest])
+    val mockResponse = CompletableFuture.completedFuture(SendMessageResponse.builder().build())
+    when(sqsAsyncClient.sendMessage(sendMessageCaptor.capture())).thenReturn(mockResponse)
+
+    val client = DASQSClient[IO](sqsAsyncClient)
+    client.sendMessage("https://test")(Test("testMessage", "testValue")).unsafeRunSync()
+
+    val sendMessageValue = sendMessageCaptor.getValue
+
+    sendMessageValue.delaySeconds() should equal(0)
   }
 
   "receiveMessage" should "request messages with the correct parameters" in {

@@ -45,7 +45,7 @@ trait DASQSClient[F[_]]:
     */
   def sendMessage[T <: Product](
       queueUrl: String
-  )(message: T, potentialFifoConfiguration: Option[FifoQueueConfiguration] = None)(using
+  )(message: T, potentialFifoConfiguration: Option[FifoQueueConfiguration] = None, delaySeconds: Int = 0)(using
       enc: Encoder[T]
   ): F[SendMessageResponse]
 
@@ -87,12 +87,13 @@ object DASQSClient:
   def apply[F[_]: Async](sqsAsyncClient: SqsAsyncClient = sqsAsyncClient): DASQSClient[F] = new DASQSClient[F] {
     def sendMessage[T <: Product](
         queueUrl: String
-    )(message: T, potentialFifoConfiguration: Option[FifoQueueConfiguration] = None)(using
+    )(message: T, potentialFifoConfiguration: Option[FifoQueueConfiguration] = None, delaySeconds: Int = 0)(using
         enc: Encoder[T]
     ): F[SendMessageResponse] =
       val messageRequestBuilder = SendMessageRequest.builder
         .queueUrl(queueUrl)
         .messageBody(message.asJson.printWith(Printer.noSpaces))
+        .delaySeconds(delaySeconds)
 
       val messageRequest = potentialFifoConfiguration
         .map { fifoQueueConfiguration =>
