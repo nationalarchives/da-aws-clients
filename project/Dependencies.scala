@@ -14,7 +14,7 @@ object Dependencies {
   lazy val dynamoDB = "software.amazon.awssdk" % "dynamodb" % awsSdkVersion
   lazy val eventBridgeSdk = "software.amazon.awssdk" % "eventbridge" % awsSdkVersion
   lazy val mockito = "org.scalatestplus" %% "mockito-5-10" % s"3.2.18.0"
-  lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.6.10"
+  lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.6.11"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val scalaTest = "org.scalatest" %% "scalatest" % scalaTestVersion
   lazy val scanamo = "org.scanamo" %% "scanamo" % "2.0.0"
