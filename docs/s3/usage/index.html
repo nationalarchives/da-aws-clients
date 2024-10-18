@@ -167,10 +167,13 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <div class="page-content row">
 <div class="small-12 large-9 column" id="docs">
 <h1><a href="#s3-client" name="s3-client" class="anchor"><span class="anchor-link"></span></a>S3 Client</h1>
-<p>The client constructor takes a <code>S3TransferManager</code> object. The default <code>apply</code> method passes one in with sensible defaults but you can pass your own in if necessary.</p>
+<h2><a href="#creating-new-instances" name="creating-new-instances" class="anchor"><span class="anchor-link"></span></a>Creating new instances</h2>
 <pre class="prettyprint"><code class="language-scala">val customTransferManager: S3TransferManager = ???
-val clientWithCustom = new DAS3Client(customTransferManager)
+val customAsyncClient: S3AsyncClient = ???
 
+val clientWithTransferManagerAndClient = DAS3Client[IO](customTransferManager, customAsyncClient)
+val clientWithAsyncClient = DAS3Client[IO](customAsyncClient)
+val clientWithAssumeRole = DAS3Client[IO](&quot;role-arn-to-assume&quot;, &quot;role-session-name&quot;)
 val clientWithDefault = DAS3Client()
 </code></pre>
 <p>The client exposes five methods:</p>
@@ -197,6 +200,19 @@ def listCommonPrefixes(bucket: String, keysPrefixedWith: String): F[SdkPublisher
 </div>
 </div>
 <div class="large-3 show-for-large column" data-sticky-container>
+<nav class="sidebar sticky" data-sticky data-anchor="docs" data-sticky-on="large">
+<div class="page-nav">
+<div class="nav-title">On this page:</div>
+<div class="nav-toc">
+<ul>
+  <li><a href="../../s3/usage/index.html#s3-client" class="header">S3 Client</a>
+  <ul>
+    <li><a href="../../s3/usage/index.html#creating-new-instances" class="header">Creating new instances</a></li>
+  </ul></li>
+</ul>
+</div>
+</div>
+</nav>
 </div>
 </div>
 
