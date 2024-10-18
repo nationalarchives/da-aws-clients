@@ -1,20 +1,23 @@
 package uk.gov.nationalarchives
 
 import cats.effect.Async
-import cats.implicits._
+import cats.implicits.*
 import org.reactivestreams.Publisher
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
+import software.amazon.awssdk.auth.credentials.{AwsCredentialsProvider, DefaultCredentialsProvider}
 import software.amazon.awssdk.core.async.{AsyncRequestBody, AsyncResponseTransformer, SdkPublisher}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.s3.S3AsyncClient
-import software.amazon.awssdk.services.s3.model._
+import software.amazon.awssdk.services.s3.model.*
+import software.amazon.awssdk.services.sts.StsClient
+import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest
 import software.amazon.awssdk.transfer.s3.S3TransferManager
-import software.amazon.awssdk.transfer.s3.model._
+import software.amazon.awssdk.transfer.s3.model.*
 
 import java.nio.ByteBuffer
 import java.util
 import java.util.concurrent.CompletableFuture
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** An S3 client. It is written generically so can be used for any effect which has an Async instance. Requires an
   * implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -100,18 +103,37 @@ object DAS3Client:
   extension [F[_]: Async, T](completableFuture: CompletableFuture[T])
     private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
 
-  private val asyncClient: S3AsyncClient = S3AsyncClient
+  private def asyncClient(
+      credentialsProvider: AwsCredentialsProvider = DefaultCredentialsProvider.create()
+  ): S3AsyncClient = S3AsyncClient
     .crtBuilder()
     .region(Region.EU_WEST_2)
-    .credentialsProvider(DefaultCredentialsProvider.create())
+    .credentialsProvider(credentialsProvider)
     .targetThroughputInGbps(20.0)
     .minimumPartSizeInBytes(10 * 1024 * 1024)
     .build()
 
-  private def transferManager(asyncClient: S3AsyncClient = asyncClient): S3TransferManager = S3TransferManager
+  private def transferManager(asyncClient: S3AsyncClient = asyncClient()): S3TransferManager = S3TransferManager
     .builder()
     .s3Client(asyncClient)
     .build()
+
+  def apply[F[_]: Async](roleToAssume: String, sessionName: String): DAS3Client[F] = {
+    val stsClient = StsClient.builder
+      .credentialsProvider(DefaultCredentialsProvider.create())
+      .build
+    val assumeRoleRequest: AssumeRoleRequest = AssumeRoleRequest.builder
+      .roleArn(roleToAssume)
+      .roleSessionName(sessionName)
+      .build
+
+    val credentialsProvider = StsAssumeRoleCredentialsProvider.builder
+      .stsClient(stsClient)
+      .refreshRequest(assumeRoleRequest)
+      .build
+
+    DAS3Client[F](asyncClient(credentialsProvider))
+  }
 
   def apply[F[_]: Async](asyncClient: S3AsyncClient): DAS3Client[F] = {
     DAS3Client(transferManager(asyncClient), asyncClient)
@@ -119,7 +141,7 @@ object DAS3Client:
 
   def apply[F[_]: Async](
       transferManager: S3TransferManager = transferManager(),
-      asyncClient: S3AsyncClient = asyncClient
+      asyncClient: S3AsyncClient = asyncClient()
   ): DAS3Client[F] =
     new DAS3Client[F] {
 

@@ -1,11 +1,14 @@
 # S3 Client
 
-The client constructor takes a `S3TransferManager` object. The default `apply` method passes one in with sensible defaults but you can pass your own in if necessary.
+## Creating new instances 
 
 ```scala
 val customTransferManager: S3TransferManager = ???
-val clientWithCustom = new DAS3Client(customTransferManager)
+val customAsyncClient: S3AsyncClient = ???
 
+val clientWithTransferManagerAndClient = DAS3Client[IO](customTransferManager, customAsyncClient)
+val clientWithAsyncClient = DAS3Client[IO](customAsyncClient)
+val clientWithAssumeRole = DAS3Client[IO]("role-arn-to-assume", "role-session-name")
 val clientWithDefault = DAS3Client()
 ```
 
