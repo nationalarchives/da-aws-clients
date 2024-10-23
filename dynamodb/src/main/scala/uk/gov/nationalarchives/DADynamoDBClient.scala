@@ -152,6 +152,8 @@ object DADynamoDBClient:
     .credentialsProvider(DefaultCredentialsProvider.create())
     .build()
 
+  extension [K, T](l: util.List[util.Map[K, T]]) def toScala: List[Map[K, T]] = l.asScala.toList.map(_.asScala.toMap)
+
   def apply[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient = dynamoDBClient): DADynamoDBClient[F] =
     new DADynamoDBClient[F] {
       extension [T](completableFuture: CompletableFuture[T])
@@ -216,7 +218,7 @@ object DADynamoDBClient:
 
         for
           batchResponse <- dynamoDBClient.batchGetItem(batchGetItemRequest).liftF
-          result <- validateAndConvertAttributeValuesList[T](batchResponse.responses.get(tableName))
+          result <- validateAndConvertAttributeValuesList[T](batchResponse.responses.get(tableName).toScala)
         yield result
 
       override def updateAttributeValues(dynamoDbRequest: DADynamoDbRequest): F[Int] =
@@ -253,11 +255,24 @@ object DADynamoDBClient:
           .expressionAttributeNames(requestCondition.attributeNames.asJava)
           .expressionAttributeValues(expressionAttributeValues)
 
-        val queryRequest = potentialGsiName.map(gsi => builder.indexName(gsi)).getOrElse(builder).build
-        dynamoDBClient
-          .query(queryRequest)
-          .liftF
-          .flatMap(res => validateAndConvertAttributeValuesList(res.items()))
+        val queryBuilder = potentialGsiName.map(gsi => builder.indexName(gsi)).getOrElse(builder)
+
+        def getAllItems(
+            lastEvaluatedKey: util.Map[String, AttributeValue] = Map.empty.asJava
+        ): F[List[Map[String, AttributeValue]]] = {
+          val query =
+            if lastEvaluatedKey.isEmpty then queryBuilder.build
+            else queryBuilder.exclusiveStartKey(lastEvaluatedKey).build
+          for {
+            response <- dynamoDBClient.query(queryBuilder.build).liftF
+            items <-
+              if response.hasLastEvaluatedKey then
+                getAllItems(response.lastEvaluatedKey).map(_ ++ response.items().toScala)
+              else Async[F].pure(response.items().toScala)
+          } yield items
+        }
+
+        getAllItems().flatMap(validateAndConvertAttributeValuesList)
 
       private def writeOrDeleteItems[T](
           tableName: String,
@@ -288,8 +303,22 @@ object DADynamoDBClient:
       }
 
       private def validateAndConvertAttributeValuesList[T](
-          attributeValuesList: util.List[util.Map[String, AttributeValue]]
+          attributeValuesList: List[Map[String, AttributeValue]]
       )(using format: DynamoFormat[T]): F[List[T]] = {
+        attributeValuesList.map { res =>
+          DynamoValue.fromMap:
+            res.map { case (name, av) =>
+              name -> DynamoValue.fromAttributeValue(av)
+            }
+        } map { dynamoValue =>
+          format.read(dynamoValue).left.map(err => new RuntimeException(err.show))
+        } map Async[F].fromEither
+      }.sequence
+
+      private def validateAndConvertAttributeValuesList2[T](
+          response: QueryResponse
+      )(using format: DynamoFormat[T]): F[List[T]] = {
+        val attributeValuesList = response.items()
         attributeValuesList.asScala.toList.map { res =>
           DynamoValue.fromMap:
             res.asScala.toMap.map { case (name, av) =>
