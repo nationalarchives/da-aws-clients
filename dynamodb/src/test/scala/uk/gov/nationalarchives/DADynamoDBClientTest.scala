@@ -486,6 +486,31 @@ class DADynamoDBClientTest
     queryItemsResponse.head.mockAttribute2 should equal("mockAttributeValue2")
   }
 
+  "queryItems" should "call the query method twice if there are more items to be fetched" in {
+    def items(idx: Int) = Map(
+      "mockAttribute" -> AttributeValue.builder.s(s"mockAttributeValue$idx").build
+    ).asJava
+
+    val itemsRemaining =
+      CompletableFuture.completedFuture(QueryResponse.builder.items(items(0)).lastEvaluatedKey(items(0)).build)
+    val noneRemaining = CompletableFuture.completedFuture(QueryResponse.builder.items(items(1)).build)
+    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+    val requestCaptor: ArgumentCaptor[QueryRequest] = ArgumentCaptor.forClass(classOf[QueryRequest])
+    when(mockDynamoDbAsyncClient.query(requestCaptor.capture)).thenReturn(itemsRemaining, noneRemaining)
+
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+    val queryItemsResponseF: IO[List[MockSingleAttributeRequest]] =
+      client.queryItems[MockSingleAttributeRequest]("testTable", "mockAttribute" > 0, Option("indexName"))
+    val queryItemsResponse = queryItemsResponseF.unsafeRunSync()
+
+    queryItemsResponse.length should equal(2)
+    queryItemsResponse.map(_.mockAttribute).sorted should equal(List("mockAttributeValue0", "mockAttributeValue1"))
+
+    val requestValues = requestCaptor.getAllValues.asScala
+    requestValues.head.exclusiveStartKey().isEmpty should equal(true)
+    requestValues.last.exclusiveStartKey().get("mockAttribute").s() should equal("mockAttributeValue0")
+  }
+
   "queryItems" should "return an empty string if the dynamo doesn't return an value for an attribute" in {
     val items = Map(
       "mockAttribute" -> "mockAttributeValue",
