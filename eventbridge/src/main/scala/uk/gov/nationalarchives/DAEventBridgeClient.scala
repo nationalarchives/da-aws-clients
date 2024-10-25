@@ -12,13 +12,9 @@ import software.amazon.awssdk.services.eventbridge.model.{PutEventsRequest, PutE
 
 /** An EventBridgeAsyncClient client. It is written generically so can be used for any effect which has an Async
   * instance. Requires an implicit instance of cats Async which is used to convert CompletableFuture to F
-  *
-  * @param asyncClient
-  *   An AWS EventBridge Async client
-  * @tparam F
-  *   Type of the effect
+  * @tparam F[_]
   */
-class DAEventBridgeClient[F[_]: Async](asyncClient: EventBridgeAsyncClient):
+trait DAEventBridgeClient[F[_]: Async]:
 
   /** Sends an event to EventBridge. detail will be serialised to a json string.
     * @param sourceId
@@ -37,18 +33,7 @@ class DAEventBridgeClient[F[_]: Async](asyncClient: EventBridgeAsyncClient):
     */
   def publishEventToEventBridge[T, U](sourceId: String, detailType: U, detail: T)(using
       enc: Encoder[T]
-  ): F[PutEventsResponse] =
-    val detailAsString = detail.asJson.printWith(Printer.noSpaces)
-    val requestEntry: PutEventsRequestEntry = PutEventsRequestEntry.builder
-      .detail(detailAsString)
-      .source(sourceId)
-      .detailType(detailType.toString)
-      .build()
-    val putEventsRequest = PutEventsRequest.builder
-      .entries(requestEntry)
-      .build()
-
-    Async[F].fromCompletableFuture(Async[F].pure(asyncClient.putEvents(putEventsRequest)))
+  ): F[PutEventsResponse]
 
 object DAEventBridgeClient:
 
@@ -59,7 +44,24 @@ object DAEventBridgeClient:
     .credentialsProvider(DefaultCredentialsProvider.create())
     .build()
 
-  def apply[F[_]: Async](eventBridgeAsyncClient: EventBridgeAsyncClient) =
-    new DAEventBridgeClient[F](eventBridgeAsyncClient)
+  def apply[F[_]: Async](eventBridgeAsyncClient: EventBridgeAsyncClient): DAEventBridgeClient[F] =
+    new DAEventBridgeClient[F] {
+      override def publishEventToEventBridge[T, U](sourceId: String, detailType: U, detail: T)(using
+          enc: Encoder[T]
+      ): F[PutEventsResponse] = {
+        val detailAsString = detail.asJson.printWith(Printer.noSpaces)
+        val requestEntry: PutEventsRequestEntry = PutEventsRequestEntry.builder
+          .detail(detailAsString)
+          .source(sourceId)
+          .detailType(detailType.toString)
+          .build()
+        val putEventsRequest = PutEventsRequest.builder
+          .entries(requestEntry)
+          .build()
 
-  def apply[F[_]: Async]() = new DAEventBridgeClient[F](asyncClient)
+        Async[F].fromCompletableFuture(Async[F].pure(eventBridgeAsyncClient.putEvents(putEventsRequest)))
+      }
+
+    }
+
+  def apply[F[_]: Async](): DAEventBridgeClient[F] = DAEventBridgeClient[F](asyncClient)
