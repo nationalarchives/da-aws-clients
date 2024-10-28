@@ -44,7 +44,7 @@ object DAEventBridgeClient:
     .credentialsProvider(DefaultCredentialsProvider.create())
     .build()
 
-  def apply[F[_]: Async](eventBridgeAsyncClient: EventBridgeAsyncClient): DAEventBridgeClient[F] =
+  def apply[F[_]: Async](eventBridgeAsyncClient: EventBridgeAsyncClient = asyncClient): DAEventBridgeClient[F] =
     new DAEventBridgeClient[F] {
       override def publishEventToEventBridge[T, U](sourceId: String, detailType: U, detail: T)(using
           enc: Encoder[T]
@@ -63,5 +63,3 @@ object DAEventBridgeClient:
       }
 
     }
-
-  def apply[F[_]: Async](): DAEventBridgeClient[F] = DAEventBridgeClient[F](asyncClient)
