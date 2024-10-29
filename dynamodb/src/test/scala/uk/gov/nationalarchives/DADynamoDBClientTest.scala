@@ -486,17 +486,17 @@ class DADynamoDBClientTest
     queryItemsResponse.head.mockAttribute2 should equal("mockAttributeValue2")
   }
 
-  "queryItems" should "call the query method twice if there are more items to be fetched" in {
+  "queryItems" should "call the query method twice if there are two pages worth of items to be fetched" in {
     def items(idx: Int) = Map(
       "mockAttribute" -> AttributeValue.builder.s(s"mockAttributeValue$idx").build
     ).asJava
 
-    val itemsRemaining =
+    val itemsRemainingResponse =
       CompletableFuture.completedFuture(QueryResponse.builder.items(items(0)).lastEvaluatedKey(items(0)).build)
-    val noneRemaining = CompletableFuture.completedFuture(QueryResponse.builder.items(items(1)).build)
+    val noneRemainingResponse = CompletableFuture.completedFuture(QueryResponse.builder.items(items(1)).build)
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val requestCaptor: ArgumentCaptor[QueryRequest] = ArgumentCaptor.forClass(classOf[QueryRequest])
-    when(mockDynamoDbAsyncClient.query(requestCaptor.capture)).thenReturn(itemsRemaining, noneRemaining)
+    when(mockDynamoDbAsyncClient.query(requestCaptor.capture)).thenReturn(itemsRemainingResponse, noneRemainingResponse)
 
     val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
     val queryItemsResponseF: IO[List[MockSingleAttributeRequest]] =

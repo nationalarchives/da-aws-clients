@@ -264,7 +264,7 @@ object DADynamoDBClient:
             if lastEvaluatedKey.isEmpty then queryBuilder.build
             else queryBuilder.exclusiveStartKey(lastEvaluatedKey).build
           for {
-            response <- dynamoDBClient.query(queryBuilder.build).liftF
+            response <- dynamoDBClient.query(query).liftF
             items <-
               if response.hasLastEvaluatedKey then
                 getAllItems(response.lastEvaluatedKey).map(_ ++ response.items().toScala)
@@ -304,28 +304,14 @@ object DADynamoDBClient:
 
       private def validateAndConvertAttributeValuesList[T](
           attributeValuesList: List[Map[String, AttributeValue]]
-      )(using format: DynamoFormat[T]): F[List[T]] = {
-        attributeValuesList.map { res =>
-          DynamoValue.fromMap:
+      )(using format: DynamoFormat[T]): F[List[T]] =
+        attributeValuesList.traverse { res =>
+          val dynamoValue = DynamoValue.fromMap:
             res.map { case (name, av) =>
               name -> DynamoValue.fromAttributeValue(av)
             }
-        } map { dynamoValue =>
-          format.read(dynamoValue).left.map(err => new RuntimeException(err.show))
-        } map Async[F].fromEither
-      }.sequence
-
-      private def validateAndConvertAttributeValuesList2[T](
-          response: QueryResponse
-      )(using format: DynamoFormat[T]): F[List[T]] = {
-        val attributeValuesList = response.items()
-        attributeValuesList.asScala.toList.map { res =>
-          DynamoValue.fromMap:
-            res.asScala.toMap.map { case (name, av) =>
-              name -> DynamoValue.fromAttributeValue(av)
-            }
-        } map { dynamoValue =>
-          format.read(dynamoValue).left.map(err => new RuntimeException(err.show))
-        } map Async[F].fromEither
-      }.sequence
+          Async[F].fromEither {
+            format.read(dynamoValue).left.map(err => new RuntimeException(err.show))
+          }
+        }
     }
