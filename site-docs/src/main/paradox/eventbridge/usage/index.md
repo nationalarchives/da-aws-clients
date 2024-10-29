@@ -4,7 +4,7 @@ The client constructor takes an `EventBridgeAsyncClient` object. The default `ap
 
 ```scala
 val customAsyncClient: EventBridgeAsyncClient = ???
-val clientWithCustom = new DAEventBridgeClient(customAsyncClient)
+val clientWithCustom = DAEventBridgeClient(customAsyncClient)
 
 val clientWithDefault = DAEventBridgeClient()
 ```

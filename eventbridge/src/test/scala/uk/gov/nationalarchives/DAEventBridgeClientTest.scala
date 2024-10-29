@@ -44,7 +44,7 @@ class DAEventBridgeClientTest extends AnyFlatSpec with TableDrivenPropertyChecks
       val asyncEventBridge = mock[EventBridgeAsyncClient]
       val eventRequestCaptor: ArgumentCaptor[PutEventsRequest] = ArgumentCaptor.forClass(classOf[PutEventsRequest])
       when(asyncEventBridge.putEvents(eventRequestCaptor.capture())).thenReturn(putEventsResponse)
-      val client = new DAEventBridgeClient[IO](asyncEventBridge)
+      val client = DAEventBridgeClient[IO](asyncEventBridge)
 
       client.publishEventToEventBridge(source, detailType, detail).unsafeRunSync()
 
@@ -59,7 +59,7 @@ class DAEventBridgeClientTest extends AnyFlatSpec with TableDrivenPropertyChecks
     val asyncEventBridge = mock[EventBridgeAsyncClient]
     when(asyncEventBridge.putEvents(any[PutEventsRequest]))
       .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Error contacting EventBridge")))
-    val client = new DAEventBridgeClient[IO](asyncEventBridge)
+    val client = DAEventBridgeClient[IO](asyncEventBridge)
 
     val message = intercept[Exception] {
       client
