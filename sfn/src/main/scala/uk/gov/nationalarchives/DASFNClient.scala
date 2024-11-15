@@ -1,13 +1,23 @@
 package uk.gov.nationalarchives
 
 import cats.effect.Async
+import cats.implicits.*
+import io.circe.syntax.*
 import io.circe.{Encoder, Printer}
-import io.circe.syntax._
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sfn.SfnAsyncClient
-import software.amazon.awssdk.services.sfn.model.{StartExecutionRequest, StartExecutionResponse}
+import software.amazon.awssdk.services.sfn.model.{
+  ListExecutionsRequest,
+  SendTaskSuccessRequest,
+  StartExecutionRequest,
+  StartExecutionResponse
+}
+import uk.gov.nationalarchives.DASFNClient.Status
+
+import java.util.concurrent.CompletableFuture
+import scala.jdk.CollectionConverters.*
 
 /** An SFN client. It is written generically so can be used for any effect which has an Async instance. Requires an
   * implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -34,9 +44,39 @@ trait DASFNClient[F[_]: Async]:
       enc: Encoder[T]
   ): F[StartExecutionResponse]
 
+  def listStepFunctions(stepFunctionArn: String, status: Status): F[List[String]]
+
+  def sendTaskSuccess(taskToken: String): F[Unit]
+
 object DASFNClient:
 
+  extension [F[_]: Async, T](completableFuture: CompletableFuture[T])
+    private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
+
+  enum Status(val sdkStatus: String):
+    case Running extends Status("RUNNING")
+    case Succeeded extends Status("SUCCEEDED")
+    case Failed extends Status("FAILED")
+
   def apply[F[_]: Async](sfnAsyncClient: SfnAsyncClient): DASFNClient[F] = new DASFNClient[F]:
+
+    override def sendTaskSuccess(taskToken: String): F[Unit] = {
+      val sendTaskSuccessRequest = SendTaskSuccessRequest.builder
+        .taskToken(taskToken)
+        .build
+      sfnAsyncClient.sendTaskSuccess(sendTaskSuccessRequest).liftF.void
+    }
+
+    override def listStepFunctions(stepFunctionArn: String, status: Status): F[List[String]] = {
+      val listExecutionsRequest = ListExecutionsRequest.builder
+        .stateMachineArn(stepFunctionArn)
+        .statusFilter(status.sdkStatus)
+        .build
+      sfnAsyncClient.listExecutions(listExecutionsRequest).liftF.map { response =>
+        response.executions().asScala.toList.map(_.name)
+      }
+    }
+
     override def startExecution[T <: Product](stateMachineArn: String, input: T, name: Option[String] = None)(using
         enc: Encoder[T]
     ): F[StartExecutionResponse] =
