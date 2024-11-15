@@ -3,7 +3,6 @@ package uk.gov.nationalarchives
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.circe.Encoder
-import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.*
 import software.amazon.awssdk.services.sfn.SfnAsyncClient
@@ -14,7 +13,7 @@ import java.util.concurrent.CompletableFuture
 import scala.collection.mutable.ListBuffer
 import scala.jdk.CollectionConverters.*
 
-class DASFNClientTest extends AnyFlatSpec with EitherValues {
+class DASFNClientTest extends AnyFlatSpec {
   case class TestInput(message: String, value: String)
 
   case class SfnExecutions(name: String, sfnArn: String, input: String, status: String, taskToken: String = "")
