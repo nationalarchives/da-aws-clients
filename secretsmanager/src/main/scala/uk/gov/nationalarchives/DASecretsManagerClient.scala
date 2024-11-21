@@ -122,8 +122,8 @@ object DASecretsManagerClient:
     .build()
 
   def apply[F[_]: Async](
-      secretsManagerAsyncClient: SecretsManagerAsyncClient = secretsManagerAsyncClient,
-      secretId: String
+      secretId: String,
+      secretsManagerAsyncClient: SecretsManagerAsyncClient = secretsManagerAsyncClient
   ): DASecretsManagerClient[F] =
     new DASecretsManagerClient[F] {
 
