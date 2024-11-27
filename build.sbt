@@ -78,6 +78,17 @@ lazy val eventBridge = (project in file("eventbridge"))
     )
   )
 
+lazy val ssm = (project in file("ssm"))
+  .settings(commonSettings)
+  .settings(
+    name := "da-ssm-client",
+    description := "A project containing useful methods for interacting with SSM",
+    libraryDependencies ++= Seq(
+      ssmSdk,
+      circeParser
+    )
+  )
+
 lazy val s3 = (project in file("s3"))
   .settings(commonSettings)
   .settings(
