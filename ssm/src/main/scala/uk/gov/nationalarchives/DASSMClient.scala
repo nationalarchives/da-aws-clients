@@ -33,15 +33,13 @@ trait DASSMClient[F[_]]:
 
 object DASSMClient:
 
-  def apply[F[_]: Async](ssmAsyncClient: SsmAsyncClient): DASSMClient[F] =
+  private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder.build
+  private lazy val ssmAsyncClient = SsmAsyncClient.builder.region(Region.EU_WEST_2).httpClient(httpClient).build
+
+  def apply[F[_]: Async](ssmAsyncClient: SsmAsyncClient = ssmAsyncClient): DASSMClient[F] =
     new DASSMClient[F]:
       override def getParameter[T](parameterName: String, withDecryption: Boolean)(using enc: Decoder[T]): F[T] =
         val request = GetParameterRequest.builder.name(parameterName).withDecryption(withDecryption).build
         Async[F].fromCompletableFuture(Async[F].pure(ssmAsyncClient.getParameter(request))).flatMap { response =>
           Async[F].fromEither(decode[T](response.parameter().value()))
         }
-
-  def apply[F[_]: Async](): DASSMClient[F] =
-    lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder.build
-    val ssmAsyncClient = SsmAsyncClient.builder.region(Region.EU_WEST_2).httpClient(httpClient).build
-    DASSMClient[F](ssmAsyncClient)

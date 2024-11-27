@@ -57,6 +57,9 @@ object DASFNClient:
     case Running extends Status("RUNNING")
     case Succeeded extends Status("SUCCEEDED")
     case Failed extends Status("FAILED")
+    case TimedOut extends Status("TIMED_OUT")
+    case Aborted extends Status("ABORTED")
+    case PendingRedrive extends Status("PENDING_REDRIVE")
 
   def apply[F[_]: Async](sfnAsyncClient: SfnAsyncClient): DASFNClient[F] = new DASFNClient[F]:
 
