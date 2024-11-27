@@ -22,6 +22,7 @@ object Dependencies {
   lazy val snsSdk = "software.amazon.awssdk" % "sns" % awsSdkVersion
   lazy val sfnSdk = "software.amazon.awssdk" % "sfn" % awsSdkVersion
   lazy val sqsSdk = "software.amazon.awssdk" % "sqs" % awsSdkVersion
+  lazy val ssmSdk = "software.amazon.awssdk" % "ssm" % awsSdkVersion
   lazy val secretsManagerSdk = "software.amazon.awssdk" % "secretsmanager" % awsSdkVersion
   lazy val transferManager = "software.amazon.awssdk" % "s3-transfer-manager" % awsSdkVersion
 }

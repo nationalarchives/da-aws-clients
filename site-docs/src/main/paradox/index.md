@@ -13,5 +13,6 @@ This allows any calling code to use any effects which implement these classes, m
 * [SFN Client Usage](sfn/usage/index.md)
 * [SNS Client Usage](sns/usage/index.md)
 * [SQS Client Usage](sqs/usage/index.md)
+* [SSM Client Usage](ssm/usage/index.md)
 
 @@@

@@ -63,7 +63,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
   "generateRandomPassword" should "return an error if the client returns an error" in {
     when(secretsManagerAsyncClient.getRandomPassword(any[GetRandomPasswordRequest]))
       .thenThrow(new RuntimeException("Error from client"))
-    val client = DASecretsManagerClient[IO](secretsManagerAsyncClient, secretId)
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
     val ex = intercept[Exception] {
       client.generateRandomPassword().unsafeRunSync()
     }
@@ -88,7 +88,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
   "describeSecret" should "return an error if the client returns an error" in {
     when(secretsManagerAsyncClient.describeSecret(any[DescribeSecretRequest]))
       .thenThrow(new RuntimeException("Error from client"))
-    val client = DASecretsManagerClient[IO](secretsManagerAsyncClient, secretId)
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
     val ex = intercept[Exception] {
       client.describeSecret().unsafeRunSync()
     }
@@ -154,7 +154,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
   "getSecretValue" should "return an error if the client returns an error" in {
     when(secretsManagerAsyncClient.getSecretValue(any[GetSecretValueRequest]))
       .thenThrow(new RuntimeException("Error from client"))
-    val client = DASecretsManagerClient[IO](secretsManagerAsyncClient, secretId)
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
     val ex = intercept[Exception] {
       client.getSecretValue[SecretResponse]().unsafeRunSync()
     }
@@ -205,7 +205,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
   "putSecretValue" should "return an error if the client returns an error" in {
     when(secretsManagerAsyncClient.putSecretValue(any[PutSecretValueRequest]))
       .thenThrow(new RuntimeException("Error from client"))
-    val client = DASecretsManagerClient[IO](secretsManagerAsyncClient, secretId)
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
     val ex = intercept[Exception] {
       client.putSecretValue(SecretRequest("secret")).unsafeRunSync()
     }
@@ -241,7 +241,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
   "updateSecretVersionStage" should "return an error if the client returns an error" in {
     when(secretsManagerAsyncClient.updateSecretVersionStage(any[UpdateSecretVersionStageRequest]))
       .thenThrow(new RuntimeException("Error from client"))
-    val client = DASecretsManagerClient[IO](secretsManagerAsyncClient, secretId)
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
     val ex = intercept[Exception] {
       client.updateSecretVersionStage("moveToVersion", "removeFromVersion").unsafeRunSync()
     }
@@ -275,7 +275,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
       fnToTest: T => CompletableFuture[R],
       mockResponse: R
   )(using classTag: ClassTag[T]): (DASecretsManagerClient[IO], ArgumentCaptor[T]) = {
-    val client = DASecretsManagerClient[IO](secretsManagerAsyncClient, secretId)
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
     val requestCaptor: ArgumentCaptor[T] = ArgumentCaptor.forClass(classTag.runtimeClass.asInstanceOf[Class[T]])
     val response: CompletableFuture[R] = CompletableFuture.completedFuture(mockResponse)
     when(fnToTest.apply(requestCaptor.capture())).thenReturn(response)
