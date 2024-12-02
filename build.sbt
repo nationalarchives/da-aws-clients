@@ -7,7 +7,7 @@ lazy val root = (project in file("."))
     publish / skip := true
   )
   .settings(commonSettings)
-  .aggregate(sqs, sns, s3, dynamoDb, eventBridge, sfn, secretsManager)
+  .aggregate(sqs, sns, s3, dynamoDb, eventBridge, sfn, secretsManager, ssm)
 
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(

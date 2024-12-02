@@ -11,24 +11,22 @@ import software.amazon.awssdk.services.ssm.SsmAsyncClient
 import software.amazon.awssdk.services.ssm.model.GetParameterRequest
 
 /** An SSM client. It is written generically so can be used for any effect which has an Async instance. Requires an
- * implicit instance of cats Async which is used to convert CompletableFuture to F
- *
- * @tparam F
- * Type of the effect
- */
+  * implicit instance of cats Async which is used to convert CompletableFuture to F
+  *
+  * @tparam F
+  *   Type of the effect
+  */
 trait DASSMClient[F[_]]:
 
-  /**
-   *
-   * @param parameterName
-   *   The name of the SSM parameter
-   * @param withDecryption
-   *   Whether to decrypt the parameter
-   * @tparam T
-   *   The return type of the decoded string
-   * @return
-   *   An object T decoded from the parameter value
-   */
+  /** @param parameterName
+    *   The name of the SSM parameter
+    * @param withDecryption
+    *   Whether to decrypt the parameter
+    * @tparam T
+    *   The return type of the decoded string
+    * @return
+    *   An object T decoded from the parameter value
+    */
   def getParameter[T](parameterName: String, withDecryption: Boolean = false)(using Decoder[T]): F[T]
 
 object DASSMClient:

@@ -6,7 +6,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import io.circe.generic.auto.*
 import org.scalatest.matchers.should.Matchers.*
 import software.amazon.awssdk.services.ssm.SsmAsyncClient
-import software.amazon.awssdk.services.ssm.model.{GetParameterRequest, GetParameterResponse, Parameter, ParameterNotFoundException}
+import software.amazon.awssdk.services.ssm.model.{
+  GetParameterRequest,
+  GetParameterResponse,
+  Parameter,
+  ParameterNotFoundException
+}
 
 import java.util.concurrent.CompletableFuture
 import scala.collection.mutable.ListBuffer
@@ -17,22 +22,30 @@ class DASSMClientTest extends AnyFlatSpec:
   case class TestParameter(name: String, encrypted: Boolean, value: String)
   case class Errors(getParameter: Boolean = false)
 
-  def createClient(initial: ListBuffer[TestParameter], errors: Option[Errors] = None): SsmAsyncClient = new SsmAsyncClient {
-    override def serviceName(): String = "test"
+  def createClient(initial: ListBuffer[TestParameter], errors: Option[Errors] = None): SsmAsyncClient =
+    new SsmAsyncClient {
+      override def serviceName(): String = "test"
 
-    override def close(): Unit = ()
+      override def close(): Unit = ()
 
-    override def getParameter(getParameterRequest: GetParameterRequest): CompletableFuture[GetParameterResponse] =
-      if errors.exists(_.getParameter) then throw new Exception("Error getting parameter") else
-      CompletableFuture.completedFuture {
-        initial.find(i => i.name == getParameterRequest.name)
-          .map { parameter =>
-            if parameter.encrypted != getParameterRequest.withDecryption() then
-              throw new Exception("Error decoding encrypted parameter")
-            GetParameterResponse.builder.parameter(Parameter.builder.value(parameter.value).build).build
-          }.getOrElse(throw ParameterNotFoundException.builder.message(s"Parameter ${getParameterRequest.name} not found").build)
-      }
-  }
+      override def getParameter(getParameterRequest: GetParameterRequest): CompletableFuture[GetParameterResponse] =
+        if errors.exists(_.getParameter) then throw new Exception("Error getting parameter")
+        else
+          CompletableFuture.completedFuture {
+            initial
+              .find(i => i.name == getParameterRequest.name)
+              .map { parameter =>
+                if parameter.encrypted != getParameterRequest.withDecryption() then
+                  throw new Exception("Error decoding encrypted parameter")
+                GetParameterResponse.builder.parameter(Parameter.builder.value(parameter.value).build).build
+              }
+              .getOrElse(
+                throw ParameterNotFoundException.builder
+                  .message(s"Parameter ${getParameterRequest.name} not found")
+                  .build
+              )
+          }
+    }
 
   "DASSMClient" should "return a decoded unencrypted parameter" in {
     val ssmAsyncClient = createClient(ListBuffer(TestParameter("testName", false, """{"value": "testValue"}""")))
