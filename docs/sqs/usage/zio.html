@@ -31,7 +31,7 @@
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.103*
+0.1.104*
 </div>
 </div>
 <div class="nav-toc">
@@ -70,6 +70,11 @@
   <ul>
     <li><a href="../../sqs/usage/zio.html" class="active page">Use with ZIO</a></li>
     <li><a href="../../sqs/usage/fs2.html" class="page">Use with Cats Effect</a></li>
+  </ul></li>
+  <li><a href="../../ssm/usage/index.html" class="page">SSM Client</a>
+  <ul>
+    <li><a href="../../ssm/usage/zio.html" class="page">Use with ZIO</a></li>
+    <li><a href="../../ssm/usage/fs2.html" class="page">Use with Cats Effect</a></li>
   </ul></li>
 </ul>
 </div>
@@ -102,7 +107,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.103*
+0.1.104*
 </div>
 </div>
 <div class="nav-toc">
@@ -142,6 +147,11 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
     <li><a href="../../sqs/usage/zio.html" class="active page">Use with ZIO</a></li>
     <li><a href="../../sqs/usage/fs2.html" class="page">Use with Cats Effect</a></li>
   </ul></li>
+  <li><a href="../../ssm/usage/index.html" class="page">SSM Client</a>
+  <ul>
+    <li><a href="../../ssm/usage/zio.html" class="page">Use with ZIO</a></li>
+    <li><a href="../../ssm/usage/fs2.html" class="page">Use with Cats Effect</a></li>
+  </ul></li>
 </ul>
 </div>
 
@@ -170,13 +180,13 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <h1><a href="#use-with-zio" name="use-with-zio" class="anchor"><span class="anchor-link"></span></a>Use with ZIO</h1>
 <h2><a href="#setup" name="setup" class="anchor"><span class="anchor-link"></span></a>Setup</h2>
 <p>You will need these dependencies</p><dl class="dependency"><dt>sbt</dt><dd><pre class="prettyprint"><code class="language-scala">libraryDependencies ++= Seq(
-  "uk.gov.nationalarchives" % "da-sqs-client_2.13" % "0.1.103",
+  "uk.gov.nationalarchives" % "da-sqs-client_2.13" % "0.1.104",
   "dev.zio" % "zio-interop-cats_2.13" % "23.0.0.5"
 )</code></pre></dd><dt>Maven</dt><dd><pre class="prettyprint"><code class="language-xml">&lt;dependencies&gt
   &lt;dependency&gt;
     &lt;groupId&gt;uk.gov.nationalarchives&lt;/groupId&gt;
     &lt;artifactId&gt;da-sqs-client_2.13&lt;/artifactId&gt;
-    &lt;version&gt;0.1.103&lt;/version&gt;
+    &lt;version&gt;0.1.104&lt;/version&gt;
   &lt;/dependency&gt
   &lt;dependency&gt;
     &lt;groupId&gt;dev.zio&lt;/groupId&gt;
@@ -184,7 +194,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
     &lt;version&gt;23.0.0.5&lt;/version&gt;
   &lt;/dependency&gt
 &lt;/dependencies&gt;</code></pre></dd><dt>Gradle</dt><dd><pre class="prettyprint"><code class="language-gradle">dependencies {
-  implementation "uk.gov.nationalarchives:da-sqs-client_2.13:0.1.103"
+  implementation "uk.gov.nationalarchives:da-sqs-client_2.13:0.1.104"
   implementation "dev.zio:zio-interop-cats_2.13:23.0.0.5"
 }</code></pre></dd></dl>
 <h2><a href="#examples" name="examples" class="anchor"><span class="anchor-link"></span></a>Examples</h2>
@@ -294,7 +304,7 @@ val deletedMessages: Task[DeleteMessageResponse] = client.deleteMessage(queueUrl
 <script type="text/javascript" src="../../lib/prettify/prettify.js"></script>
 <script type="text/javascript" src="../../lib/prettify/lang-scala.js"></script>
 <script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
-<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.103-SNAPSHOT', '')});</script>
+<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.104-SNAPSHOT', '')});</script>
 
 
 </html>
