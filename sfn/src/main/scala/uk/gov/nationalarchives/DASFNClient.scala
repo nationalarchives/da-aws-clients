@@ -46,7 +46,7 @@ trait DASFNClient[F[_]: Async]:
 
   def listStepFunctions(stepFunctionArn: String, status: Status): F[List[String]]
 
-  def sendTaskSuccess(taskToken: String): F[Unit]
+  def sendTaskSuccess[T: Encoder](taskToken: String, potentialOutput: Option[T] = None): F[Unit]
 
 object DASFNClient:
 
@@ -63,9 +63,10 @@ object DASFNClient:
 
   def apply[F[_]: Async](sfnAsyncClient: SfnAsyncClient): DASFNClient[F] = new DASFNClient[F]:
 
-    override def sendTaskSuccess(taskToken: String): F[Unit] = {
+    override def sendTaskSuccess[T: Encoder](taskToken: String, potentialOutput: Option[T] = None): F[Unit] = {
       val sendTaskSuccessRequest = SendTaskSuccessRequest.builder
         .taskToken(taskToken)
+        .output(potentialOutput.map(_.asJson.printWith(Printer.noSpaces)).getOrElse("{}"))
         .build
       sfnAsyncClient.sendTaskSuccess(sendTaskSuccessRequest).liftF.void
     }
