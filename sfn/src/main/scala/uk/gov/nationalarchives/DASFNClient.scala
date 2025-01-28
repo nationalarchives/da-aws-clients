@@ -66,7 +66,7 @@ object DASFNClient:
     override def sendTaskSuccess[T: Encoder](taskToken: String, potentialOutput: Option[T] = None): F[Unit] = {
       val sendTaskSuccessRequest = SendTaskSuccessRequest.builder
         .taskToken(taskToken)
-        .output(potentialOutput.map(_.asJson.printWith(Printer.noSpaces)).getOrElse("{}"))
+        .output(potentialOutput.map(_.asJson.noSpaces).getOrElse("{}"))
         .build
       sfnAsyncClient.sendTaskSuccess(sendTaskSuccessRequest).liftF.void
     }
