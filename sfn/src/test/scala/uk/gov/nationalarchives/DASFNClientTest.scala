@@ -3,6 +3,7 @@ package uk.gov.nationalarchives
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.circe.Encoder
+import io.circe.generic.auto.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.*
 import software.amazon.awssdk.services.sfn.SfnAsyncClient
@@ -22,7 +23,11 @@ class DASFNClientTest extends AnyFlatSpec {
 
   case class Errors(startExecution: Boolean = false, listExecutions: Boolean = false, sendTaskSuccess: Boolean = false)
 
-  def createClient(initial: ListBuffer[SfnExecutions], errors: Option[Errors] = None): SfnAsyncClient =
+  def createClient(
+      initial: ListBuffer[SfnExecutions],
+      errors: Option[Errors] = None,
+      expectedTaskSuccessOutput: String = "{}"
+  ): SfnAsyncClient =
     new SfnAsyncClient:
       override def serviceName(): String = "test"
 
@@ -63,7 +68,9 @@ class DASFNClientTest extends AnyFlatSpec {
       override def sendTaskSuccess(
           sendTaskSuccessRequest: SendTaskSuccessRequest
       ): CompletableFuture[SendTaskSuccessResponse] = {
-        if errors.exists(_.sendTaskSuccess) then throw new Exception("Error sending task success")
+        if sendTaskSuccessRequest.output() != expectedTaskSuccessOutput then
+          throw new Exception("Expected output doesn't match")
+        else if errors.exists(_.sendTaskSuccess) then throw new Exception("Error sending task success")
         else
           initial
             .find(_.taskToken == sendTaskSuccessRequest.taskToken())
@@ -170,6 +177,18 @@ class DASFNClientTest extends AnyFlatSpec {
       client.sendTaskSuccess("invalidTaskToken").unsafeRunSync()
     }
     ex.getMessage should equal("Task invalidTaskToken does not exist")
+  }
+
+  "sendTaskSuccess" should "return a custom output if one is provided" in {
+    val initialExecutions = ListBuffer(
+      SfnExecutions("name1running", "arn1", "", "running", "taskToken")
+    )
+    val sfnAsyncClient = createClient(initialExecutions, None, """{"test":true}""")
+    val client = DASFNClient[IO](sfnAsyncClient)
+    case class Output(test: Boolean)
+
+    client.sendTaskSuccess("taskToken", Option(Output(true))).unsafeRunSync()
+
   }
 
   "sendTaskSuccess" should "return an error if there is an error with the sdk" in {
