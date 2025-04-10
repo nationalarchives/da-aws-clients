@@ -5,7 +5,7 @@ object Dependencies {
   private val circeVersion = "0.14.12"
   private lazy val scalaTestVersion = "3.2.19"
 
-  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.36.3"
+  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.38.1"
   lazy val catsCore = "org.typelevel" %% "cats-core" % "2.13.0"
   lazy val catsEffect = "org.typelevel" %% "cats-effect" % "3.5.7"
   lazy val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
