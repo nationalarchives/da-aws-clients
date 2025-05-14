@@ -8,7 +8,6 @@ import org.mockito.Mockito.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatestplus.mockito.MockitoSugar
-import org.scalatestplus.mockito.MockitoSugar.mock
 import reactor.test.StepVerifier
 import software.amazon.awssdk.core.SdkResponse
 import software.amazon.awssdk.core.async.{ResponsePublisher, SdkPublisher}
