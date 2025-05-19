@@ -76,7 +76,8 @@ def updateAttributeValueSetUpExample(tableName: String, partitionKeyName: String
     Map(
       attributeName -> Some(AttributeValue.builder().s(newAttributeValue).build()),
       attributeName2 -> Some(AttributeValue.builder().s(newAttributeValue2).build())
-    )
+    ),
+    Some("attribute_not_exists(attributeName)")
   )
   zioClient.updateAttributeValues(dynamoDbRequest)
 }

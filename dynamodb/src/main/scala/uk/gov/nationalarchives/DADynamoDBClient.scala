@@ -136,7 +136,8 @@ object DADynamoDBClient:
   case class DADynamoDbRequest(
       tableName: String,
       primaryKeyAndItsValue: Map[String, AttributeValue],
-      attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]]
+      attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]],
+      conditionalExpression: Option[String] = None
   )
 
   case class DADynamoDbWriteItemRequest(
@@ -231,11 +232,15 @@ object DADynamoDBClient:
               .build()
           } asJava
 
-        val updateAttributeValueRequest = UpdateItemRequest
+        val updateAttributeValueRequestBuilder = UpdateItemRequest
           .builder()
           .tableName(dynamoDbRequest.tableName)
           .key(dynamoDbRequest.primaryKeyAndItsValue asJava)
           .attributeUpdates(attributeValueUpdates)
+
+        val updateAttributeValueRequest = dynamoDbRequest.conditionalExpression
+          .map(updateAttributeValueRequestBuilder.conditionExpression)
+          .getOrElse(updateAttributeValueRequestBuilder)
           .build()
 
         dynamoDBClient
