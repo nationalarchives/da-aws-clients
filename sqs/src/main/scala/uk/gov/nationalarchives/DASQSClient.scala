@@ -9,14 +9,7 @@ import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.{NettyNioAsyncHttpClient, ProxyConfiguration}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{
-  DeleteMessageRequest,
-  DeleteMessageResponse,
-  ReceiveMessageRequest,
-  SendMessageRequest,
-  SendMessageResponse,
-  MessageSystemAttributeName
-}
+import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, DeleteMessageResponse, GetQueueAttributesRequest, GetQueueAttributesResponse, MessageSystemAttributeName, QueueAttributeName, ReceiveMessageRequest, SendMessageRequest, SendMessageResponse}
 import uk.gov.nationalarchives.DASQSClient.{FifoQueueConfiguration, MessageResponse}
 
 import java.net.URI
@@ -75,6 +68,14 @@ trait DASQSClient[F[_]]:
     */
   def deleteMessage(queueUrl: String, receiptHandle: String): F[DeleteMessageResponse]
 
+  /** Gets the attributes of the specified queue
+    * @param queueUrl
+    *   The queue whose attributes need to be retrieved
+    * @return
+    *   A GetQueueAttributesResponse class wrapped in the F effect.
+    */
+  def getQueueAttributes(queueUrl: String): F[GetQueueAttributesResponse]
+
 object DASQSClient:
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   case class MessageResponse[T](receiptHandle: String, messageGroupId: Option[String], message: T)
@@ -132,6 +133,13 @@ object DASQSClient:
     def deleteMessage(queueUrl: String, receiptHandle: String): F[DeleteMessageResponse] =
       val deleteMessageRequest = DeleteMessageRequest.builder.queueUrl(queueUrl).receiptHandle(receiptHandle).build
       Async[F].fromCompletableFuture(Async[F].pure(sqsAsyncClient.deleteMessage(deleteMessageRequest)))
+
+    def getQueueAttributes(queueUrl: String): F[GetQueueAttributesResponse] =
+      val getQueueAttributesRequest = GetQueueAttributesRequest.builder
+        .queueUrl(queueUrl)
+        .attributeNames(QueueAttributeName.ALL)
+        .build()
+      Async[F].fromCompletableFuture(Async[F].pure(sqsAsyncClient.getQueueAttributes(getQueueAttributesRequest)))
   }
 
   def apply[F[_]: Async](httpsProxy: URI): DASQSClient[F] =

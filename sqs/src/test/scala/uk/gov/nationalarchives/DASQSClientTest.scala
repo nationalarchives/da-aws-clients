@@ -10,16 +10,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatestplus.mockito.MockitoSugar
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{
-  DeleteMessageRequest,
-  DeleteMessageResponse,
-  Message,
-  MessageSystemAttributeName,
-  ReceiveMessageRequest,
-  ReceiveMessageResponse,
-  SendMessageRequest,
-  SendMessageResponse
-}
+import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, DeleteMessageResponse, GetQueueAttributesRequest, GetQueueAttributesResponse, Message, MessageSystemAttributeName, QueueAttributeName, ReceiveMessageRequest, ReceiveMessageResponse, SendMessageRequest, SendMessageResponse}
 import uk.gov.nationalarchives.DASQSClient.FifoQueueConfiguration
 
 import java.util.concurrent.CompletableFuture
@@ -206,4 +197,33 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     ex.getMessage should equal("Error deleting message")
   }
 
+  "getQueueAttributes" should "request for ALL attributes of the queue" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    val getQueueAttributesCaptor: ArgumentCaptor[GetQueueAttributesRequest] =
+      ArgumentCaptor.forClass(classOf[GetQueueAttributesRequest])
+    val mockResponse = CompletableFuture.completedFuture(GetQueueAttributesResponse.builder().build())
+    when(sqsAsyncClient.getQueueAttributes(getQueueAttributesCaptor.capture())).thenReturn(mockResponse)
+
+    val client = DASQSClient[IO](sqsAsyncClient)
+    client.getQueueAttributes("https://test").unsafeRunSync()
+
+    val getQueueAttributesValue = getQueueAttributesCaptor.getValue
+
+    getQueueAttributesValue.queueUrl() should equal("https://test")
+    getQueueAttributesValue.attributeNames().size() should equal(1)
+    getQueueAttributesValue.attributeNames().asScala.toList.head should equal(QueueAttributeName.ALL)
+  }
+
+  "getQueueAttributes" should "return an error if there is an error getting the queue attributes" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    when(sqsAsyncClient.getQueueAttributes(any[GetQueueAttributesRequest]))
+      .thenThrow(new RuntimeException("Error getting queue attributes"))
+
+    val client = DASQSClient[IO](sqsAsyncClient)
+
+    val ex = intercept[Exception] {
+      client.getQueueAttributes("https://test").unsafeRunSync()
+    }
+    ex.getMessage should equal("Error getting queue attributes")
+  }
 }
