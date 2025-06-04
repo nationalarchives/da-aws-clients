@@ -209,7 +209,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     ex.getMessage should equal("Error deleting message")
   }
 
-  "getQueueAttributes" should "request for ALL attributes of the queue" in {
+  "getQueueAttributes" should "request for 'ALL' attributes of the queue" in {
     val sqsAsyncClient = mock[SqsAsyncClient]
     val getQueueAttributesCaptor: ArgumentCaptor[GetQueueAttributesRequest] =
       ArgumentCaptor.forClass(classOf[GetQueueAttributesRequest])
