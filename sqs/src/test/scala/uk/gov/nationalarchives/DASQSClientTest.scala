@@ -209,7 +209,7 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     ex.getMessage should equal("Error deleting message")
   }
 
-  "getQueueAttributes" should "request for 'ALL' attributes of the queue" in {
+  "getQueueAttributes" should "request for 'ALL' attributes of the queue when no specific attribute is requested" in {
     val sqsAsyncClient = mock[SqsAsyncClient]
     val getQueueAttributesCaptor: ArgumentCaptor[GetQueueAttributesRequest] =
       ArgumentCaptor.forClass(classOf[GetQueueAttributesRequest])
@@ -237,5 +237,26 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
       client.getQueueAttributes("https://test").unsafeRunSync()
     }
     ex.getMessage should equal("Error getting queue attributes")
+  }
+
+  "getQueueAttributes" should "request specific attributes of the queue" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    val getQueueAttributesCaptor: ArgumentCaptor[GetQueueAttributesRequest] =
+      ArgumentCaptor.forClass(classOf[GetQueueAttributesRequest])
+    val mockResponse = CompletableFuture.completedFuture(GetQueueAttributesResponse.builder().build())
+    when(sqsAsyncClient.getQueueAttributes(getQueueAttributesCaptor.capture())).thenReturn(mockResponse)
+
+    val client = DASQSClient[IO](sqsAsyncClient)
+    client.getQueueAttributes("https://test", List(
+      QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES,
+      QueueAttributeName.MESSAGE_RETENTION_PERIOD
+    )).unsafeRunSync()
+
+    val getQueueAttributesValue = getQueueAttributesCaptor.getValue
+
+    getQueueAttributesValue.queueUrl() should equal("https://test")
+    getQueueAttributesValue.attributeNames().size() should equal(2)
+    getQueueAttributesValue.attributeNames().asScala.toList should contain(QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES)
+    getQueueAttributesValue.attributeNames().asScala.toList should contain(QueueAttributeName.MESSAGE_RETENTION_PERIOD)
   }
 }

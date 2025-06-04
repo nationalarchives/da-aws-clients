@@ -78,13 +78,16 @@ trait DASQSClient[F[_]]:
     */
   def deleteMessage(queueUrl: String, receiptHandle: String): F[DeleteMessageResponse]
 
-  /** Gets the attributes of the specified queue
-    * @param queueUrl
-    *   The queue whose attributes need to be retrieved
-    * @return
-    *   A GetQueueAttributesResponse class wrapped in the F effect.
-    */
-  def getQueueAttributes(queueUrl: String): F[GetQueueAttributesResponse]
+  /**
+   * Gets the attributes of the specified queue with specific attribute names
+   * @param queuUrl
+   *    The queue whose attributes need to be retrieved
+   * @param attributeNames
+   *    An optional list of attribute names to retrieve, defaults to QueueAttributeName.ALL
+   * @return
+   *    A GetQueueAttributesResponse class wrapped in the F effect.
+   */
+  def getQueueAttributes(queuUrl: String, attributeNames: List[QueueAttributeName] = List(QueueAttributeName.ALL)): F[GetQueueAttributesResponse]
 
 object DASQSClient:
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
@@ -144,10 +147,10 @@ object DASQSClient:
       val deleteMessageRequest = DeleteMessageRequest.builder.queueUrl(queueUrl).receiptHandle(receiptHandle).build
       Async[F].fromCompletableFuture(Async[F].pure(sqsAsyncClient.deleteMessage(deleteMessageRequest)))
 
-    def getQueueAttributes(queueUrl: String): F[GetQueueAttributesResponse] =
+    def getQueueAttributes(queueUrl: String, attributeNames: List[QueueAttributeName] = List(QueueAttributeName.ALL)): F[GetQueueAttributesResponse] =
       val getQueueAttributesRequest = GetQueueAttributesRequest.builder
         .queueUrl(queueUrl)
-        .attributeNames(QueueAttributeName.ALL)
+        .attributeNames(attributeNames.asJava)
         .build()
       Async[F].fromCompletableFuture(Async[F].pure(sqsAsyncClient.getQueueAttributes(getQueueAttributesRequest)))
   }
