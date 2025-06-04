@@ -10,7 +10,19 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatestplus.mockito.MockitoSugar
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, DeleteMessageResponse, GetQueueAttributesRequest, GetQueueAttributesResponse, Message, MessageSystemAttributeName, QueueAttributeName, ReceiveMessageRequest, ReceiveMessageResponse, SendMessageRequest, SendMessageResponse}
+import software.amazon.awssdk.services.sqs.model.{
+  DeleteMessageRequest,
+  DeleteMessageResponse,
+  GetQueueAttributesRequest,
+  GetQueueAttributesResponse,
+  Message,
+  MessageSystemAttributeName,
+  QueueAttributeName,
+  ReceiveMessageRequest,
+  ReceiveMessageResponse,
+  SendMessageRequest,
+  SendMessageResponse
+}
 import uk.gov.nationalarchives.DASQSClient.FifoQueueConfiguration
 
 import java.util.concurrent.CompletableFuture

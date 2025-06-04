@@ -9,7 +9,17 @@ import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.{NettyNioAsyncHttpClient, ProxyConfiguration}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, DeleteMessageResponse, GetQueueAttributesRequest, GetQueueAttributesResponse, MessageSystemAttributeName, QueueAttributeName, ReceiveMessageRequest, SendMessageRequest, SendMessageResponse}
+import software.amazon.awssdk.services.sqs.model.{
+  DeleteMessageRequest,
+  DeleteMessageResponse,
+  GetQueueAttributesRequest,
+  GetQueueAttributesResponse,
+  MessageSystemAttributeName,
+  QueueAttributeName,
+  ReceiveMessageRequest,
+  SendMessageRequest,
+  SendMessageResponse
+}
 import uk.gov.nationalarchives.DASQSClient.{FifoQueueConfiguration, MessageResponse}
 
 import java.net.URI
