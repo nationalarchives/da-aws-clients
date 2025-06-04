@@ -247,16 +247,25 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
     when(sqsAsyncClient.getQueueAttributes(getQueueAttributesCaptor.capture())).thenReturn(mockResponse)
 
     val client = DASQSClient[IO](sqsAsyncClient)
-    client.getQueueAttributes("https://test", List(
-      QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES,
-      QueueAttributeName.MESSAGE_RETENTION_PERIOD
-    )).unsafeRunSync()
+    client
+      .getQueueAttributes(
+        "https://test",
+        List(
+          QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES,
+          QueueAttributeName.MESSAGE_RETENTION_PERIOD
+        )
+      )
+      .unsafeRunSync()
 
     val getQueueAttributesValue = getQueueAttributesCaptor.getValue
 
     getQueueAttributesValue.queueUrl() should equal("https://test")
     getQueueAttributesValue.attributeNames().size() should equal(2)
-    getQueueAttributesValue.attributeNames().asScala.toList should contain(QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES)
-    getQueueAttributesValue.attributeNames().asScala.toList should contain(QueueAttributeName.MESSAGE_RETENTION_PERIOD)
+    getQueueAttributesValue.attributeNames().asScala.toList should contain(
+      QueueAttributeName.APPROXIMATE_NUMBER_OF_MESSAGES
+    )
+    getQueueAttributesValue.attributeNames().asScala.toList should contain(
+      QueueAttributeName.MESSAGE_RETENTION_PERIOD
+    )
   }
 }
