@@ -79,7 +79,7 @@ trait DASQSClient[F[_]]:
   def deleteMessage(queueUrl: String, receiptHandle: String): F[DeleteMessageResponse]
 
   /** Gets the attributes of the specified queue with specific attribute names
-    * @param queuUrl
+    * @param queueUrl
     *   The queue whose attributes need to be retrieved
     * @param attributeNames
     *   An optional list of attribute names to retrieve, defaults to QueueAttributeName.ALL
@@ -87,7 +87,7 @@ trait DASQSClient[F[_]]:
     *   A GetQueueAttributesResponse class wrapped in the F effect.
     */
   def getQueueAttributes(
-      queuUrl: String,
+      queueUrl: String,
       attributeNames: List[QueueAttributeName] = List(QueueAttributeName.ALL)
   ): F[GetQueueAttributesResponse]
 

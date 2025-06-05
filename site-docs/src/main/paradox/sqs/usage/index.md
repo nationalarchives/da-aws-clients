@@ -10,7 +10,7 @@ def receiveMessages[T](queueUrl: String, maxNumberOfMessages: Int = 10)(implicit
 
 def deleteMessage(queueUrl: String, receiptHandle: String): F[DeleteMessageResponse]
 
-def getQueueAttributes(queuUrl: String, attributeNames: List[QueueAttributeName] = List(QueueAttributeName.ALL)): F[GetQueueAttributesResponse]
+def getQueueAttributes(queueUrl: String, attributeNames: List[QueueAttributeName] = List(QueueAttributeName.ALL)): F[GetQueueAttributesResponse]
 ```
 
 The sendMessage method takes a case class and requires an implicit circe encoder to serialise the case class to JSON. 
