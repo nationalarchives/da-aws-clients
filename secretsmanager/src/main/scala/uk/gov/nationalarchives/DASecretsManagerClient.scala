@@ -98,8 +98,8 @@ trait DASecretsManagerClient[F[_]: Async]:
     *   UpdateSecretVersionStageResponse wrapped in F[_]
     */
   def updateSecretVersionStage(
-      moveToVersionId: String,
-      removeFromVersionId: String,
+      moveToVersionId: Option[String],
+      removeFromVersionId: Option[String],
       stage: Stage = Current
   ): F[UpdateSecretVersionStageResponse]
 
@@ -157,16 +157,16 @@ object DASecretsManagerClient:
         secretsManagerAsyncClient.putSecretValue(request).liftF
 
       override def updateSecretVersionStage(
-          moveToVersionId: String,
-          removeFromVersionId: String,
+          moveToVersionId: Option[String],
+          removeFromVersionId: Option[String],
           stage: Stage = Current
       ): F[UpdateSecretVersionStageResponse] =
         val request = UpdateSecretVersionStageRequest
           .builder()
           .secretId(secretId)
           .versionStage(stage.toString)
-          .moveToVersionId(moveToVersionId)
-          .removeFromVersionId(removeFromVersionId)
+          .moveToVersionId(moveToVersionId.orNull)
+          .removeFromVersionId(removeFromVersionId.orNull)
           .build
         secretsManagerAsyncClient.updateSecretVersionStage(request).liftF
 

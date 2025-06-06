@@ -220,7 +220,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
         mockResponse
       )
 
-    client.updateSecretVersionStage("moveToVersionId", "removeFromVersionId").unsafeRunSync()
+    client.updateSecretVersionStage(Option("moveToVersionId"), Option("removeFromVersionId")).unsafeRunSync()
 
     checkUpdateSecretVersionResponse(argumentCaptor, Current)
   }
@@ -233,7 +233,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
         mockResponse
       )
 
-    client.updateSecretVersionStage("moveToVersionId", "removeFromVersionId", Pending).unsafeRunSync()
+    client.updateSecretVersionStage(Option("moveToVersionId"), Option("removeFromVersionId"), Pending).unsafeRunSync()
 
     checkUpdateSecretVersionResponse(argumentCaptor, Pending)
   }
@@ -243,9 +243,27 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
       .thenThrow(new RuntimeException("Error from client"))
     val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
     val ex = intercept[Exception] {
-      client.updateSecretVersionStage("moveToVersion", "removeFromVersion").unsafeRunSync()
+      client.updateSecretVersionStage(Option("moveToVersion"), Option("removeFromVersion")).unsafeRunSync()
     }
     ex.getMessage should equal("Error from client")
+  }
+
+  "updateSecretVersionStage" should "not pass move from version if it is not defined" in {
+    val updateSecretVersionStageCaptor = ArgumentCaptor.forClass(classOf[UpdateSecretVersionStageRequest])
+    when(secretsManagerAsyncClient.updateSecretVersionStage(updateSecretVersionStageCaptor.capture()))
+      .thenReturn(CompletableFuture.completedFuture(UpdateSecretVersionStageResponse.builder.build))
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
+    client.updateSecretVersionStage(None, Option("removeFromVersion")).unsafeRunSync()
+    updateSecretVersionStageCaptor.getValue.moveToVersionId() should equal(null)
+  }
+
+  "updateSecretVersionStage" should "not pass move to version if it is not defined" in {
+    val updateSecretVersionStageCaptor = ArgumentCaptor.forClass(classOf[UpdateSecretVersionStageRequest])
+    when(secretsManagerAsyncClient.updateSecretVersionStage(updateSecretVersionStageCaptor.capture()))
+      .thenReturn(CompletableFuture.completedFuture(UpdateSecretVersionStageResponse.builder.build))
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
+    client.updateSecretVersionStage(Option("moveToVersion"), None).unsafeRunSync()
+    updateSecretVersionStageCaptor.getValue.removeFromVersionId() should equal(null)
   }
 
   private def checkUpdateSecretVersionResponse(
