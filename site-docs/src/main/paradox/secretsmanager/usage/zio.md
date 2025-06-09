@@ -36,7 +36,9 @@ object Examples {
   val putSecretValueWithStage: Task[PutSecretValueResponse] = client.putSecretValue(SecretRequest("username", "password"), Pending)
   val putSecretValueWithStageAndToken: Task[PutSecretValueResponse] = client.putSecretValue(SecretRequest("username", "password"), Pending, Option("clientRequestToken"))
 
-  val updateSecretVersion: Task[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage("moveToVersion", "removeFromVersion")
-  val updateSecretVersionWithStage: Task[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage("moveToVersion", "removeFromVersion", Pending)
+  val updateSecretVersion: Task[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage(Option("moveToVersion"), Option("removeFromVersion"))
+  val updateSecretVersionWithStage: Task[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage(Option("moveToVersion"), Option("removeFromVersion"), Pending)
+  val updateSecretVersionNoMoveTo: Task[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage(None, Option("removeFromVersion"), Pending)
+  val updateSecretVersionNoRemoveFrom: Task[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage(Option("moveToVersion"), None, Pending)
 }
 ```

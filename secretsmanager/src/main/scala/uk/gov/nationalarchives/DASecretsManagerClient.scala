@@ -88,18 +88,18 @@ trait DASecretsManagerClient[F[_]: Async]:
   ): F[PutSecretValueResponse]
 
   /** Update the version stage. This is used to finalise secret rotation.
-    * @param moveToVersionId
-    *   The version you are moving to
-    * @param removeFromVersionId
-    *   The version you are moving from
+    * @param potentialMoveToVersionId
+    *   The optional version you are moving to
+    * @param potentialRemoveFromVersionId
+    *   The optional version you are moving from
     * @param stage
     *   The stage of the version
     * @return
     *   UpdateSecretVersionStageResponse wrapped in F[_]
     */
   def updateSecretVersionStage(
-      moveToVersionId: String,
-      removeFromVersionId: String,
+      potentialMoveToVersionId: Option[String],
+      potentialRemoveFromVersionId: Option[String],
       stage: Stage = Current
   ): F[UpdateSecretVersionStageResponse]
 
@@ -157,16 +157,16 @@ object DASecretsManagerClient:
         secretsManagerAsyncClient.putSecretValue(request).liftF
 
       override def updateSecretVersionStage(
-          moveToVersionId: String,
-          removeFromVersionId: String,
+          potentialMoveToVersionId: Option[String],
+          potentialRemoveFromVersionId: Option[String],
           stage: Stage = Current
       ): F[UpdateSecretVersionStageResponse] =
         val request = UpdateSecretVersionStageRequest
           .builder()
           .secretId(secretId)
           .versionStage(stage.toString)
-          .moveToVersionId(moveToVersionId)
-          .removeFromVersionId(removeFromVersionId)
+          .moveToVersionId(potentialMoveToVersionId.orNull)
+          .removeFromVersionId(potentialRemoveFromVersionId.orNull)
           .build
         secretsManagerAsyncClient.updateSecretVersionStage(request).liftF
 

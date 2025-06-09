@@ -7,7 +7,7 @@ def describeSecret(): F[DescribeSecretResponse]
 def getSecretValue[T](stage: Stage = Current)(implicit decoder: Decoder[T]): F[T]
 def getSecretValue[T](versionId: String, stage: Stage)(implicit decoder: Decoder[T]): F[T]
 def putSecretValue[T](secret: T, stage: Stage = Current, clientRequestToken: Option[String] = None)(implicit encoder: Encoder[T]): F[PutSecretValueResponse]
-def updateSecretVersionStage(moveToVersionId: String, removeFromVersionId: String, stage: Stage = Current): F[UpdateSecretVersionStageResponse]
+def updateSecretVersionStage(potentialMoveToVersionId: Option[String], potentialRemoveFromVersionId: Option[String], stage: Stage = Current): F[UpdateSecretVersionStageResponse]
 ```
 
 @@@ index
