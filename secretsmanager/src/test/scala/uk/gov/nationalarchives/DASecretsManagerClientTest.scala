@@ -248,7 +248,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     ex.getMessage should equal("Error from client")
   }
 
-  "updateSecretVersionStage" should "not pass move from version if it is not defined" in {
+  "updateSecretVersionStage" should "not pass move to version if it is not defined" in {
     val updateSecretVersionStageCaptor = ArgumentCaptor.forClass(classOf[UpdateSecretVersionStageRequest])
     when(secretsManagerAsyncClient.updateSecretVersionStage(updateSecretVersionStageCaptor.capture()))
       .thenReturn(CompletableFuture.completedFuture(UpdateSecretVersionStageResponse.builder.build))
@@ -257,7 +257,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     updateSecretVersionStageCaptor.getValue.moveToVersionId() should equal(null)
   }
 
-  "updateSecretVersionStage" should "not pass move to version if it is not defined" in {
+  "updateSecretVersionStage" should "not pass remove from version if it is not defined" in {
     val updateSecretVersionStageCaptor = ArgumentCaptor.forClass(classOf[UpdateSecretVersionStageRequest])
     when(secretsManagerAsyncClient.updateSecretVersionStage(updateSecretVersionStageCaptor.capture()))
       .thenReturn(CompletableFuture.completedFuture(UpdateSecretVersionStageResponse.builder.build))

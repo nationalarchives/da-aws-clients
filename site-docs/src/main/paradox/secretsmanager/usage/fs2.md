@@ -35,7 +35,9 @@ object Examples {
   val putSecretValueWithStage: IO[PutSecretValueResponse] = client.putSecretValue(SecretRequest("username", "password"), Pending)
   val putSecretValueWithStageAndToken: IO[PutSecretValueResponse] = client.putSecretValue(SecretRequest("username", "password"), Pending, Option("clientRequestToken"))
 
-  val updateSecretVersion: IO[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage("moveToVersion", "removeFromVersion")
-  val updateSecretVersionWithStage: IO[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage("moveToVersion", "removeFromVersion", Pending)
+  val updateSecretVersion: IO[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage(Option("moveToVersion"), Option("removeFromVersion"))
+  val updateSecretVersionWithStage: IO[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage(Option("moveToVersion"), Option("removeFromVersion"), Pending)
+  val updateSecretVersionNoMoveTo: IO[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage(None, Option("removeFromVersion"), Pending)
+  val updateSecretVersionNoRemoveFrom: IO[UpdateSecretVersionStageResponse] = client.updateSecretVersionStage(Option("moveToVersion"), None, Pending)
 }
 ```
