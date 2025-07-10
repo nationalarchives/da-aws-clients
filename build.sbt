@@ -1,4 +1,5 @@
 import Dependencies.*
+import sbt.internal.librarymanagement.Publishing.sonaRelease
 import sbtrelease.ReleaseStateTransformations.*
 
 lazy val root = (project in file("."))
@@ -39,7 +40,11 @@ lazy val commonSettings = Seq(
   licenses := List("MIT" -> new URL("https://choosealicense.com/licenses/mit/")),
   homepage := Some(url("https://github.com/nationalarchives/da-aws-clients")),
   useGpgPinentry := true,
-  publishTo := sonatypePublishToBundle.value,
+  publishTo := {
+    val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
+    if (isSnapshot.value) Some("central-snapshots" at centralSnapshots)
+    else localStaging.value
+  },
   publishMavenStyle := true,
   releaseProcess := Seq[ReleaseStep](
     checkSnapshotDependencies,
@@ -50,7 +55,7 @@ lazy val commonSettings = Seq(
     commitReleaseVersion,
     tagRelease,
     releaseStepCommand("publishSigned"),
-    releaseStepCommand("sonatypeBundleRelease"),
+    releaseStepCommand(sonaRelease),
     setNextVersion,
     commitNextVersion,
     pushChanges
