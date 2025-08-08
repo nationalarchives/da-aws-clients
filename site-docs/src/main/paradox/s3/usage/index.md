@@ -12,7 +12,7 @@ val clientWithAssumeRole = DAS3Client[IO]("role-arn-to-assume", "role-session-na
 val clientWithDefault = DAS3Client()
 ```
 
-The client exposes five methods:
+The client exposes seven methods:
 
 ```scala
 def upload(bucket: String, key: String, contentLength: Long, publisher: Publisher[ByteBuffer]): F[CompletedUpload]
@@ -26,6 +26,8 @@ def headObject(bucket: String, key: String): F[HeadObjectResponse]
 def deleteObjects(bucket: String, keys: List[String]): F[DeleteObjectsResponse]
 
 def listCommonPrefixes(bucket: String, keysPrefixedWith: String): F[SdkPublisher[String]]
+
+def listObjects(bucket: String, potentialPrefix: Option[String] = None): F[ListObjectsV2Response]
 ```
 
 The upload and download methods stream the data using the Java Reactive streams standard. 
