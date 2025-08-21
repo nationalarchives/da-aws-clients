@@ -278,7 +278,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     ex.getMessage should equal("Bucket does not exist")
   }
 
-  "listObjects" should "list all objects without a prefix if one is not passed in" in {
+  "listObjects" should "request for all objects in a bucket if a prefix is not passed in" in {
     val asyncClientMock = mock[S3AsyncClient]
 
     val listObjectsRequestCaptor: ArgumentCaptor[ListObjectsV2Request] =
@@ -300,7 +300,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     Option(capturedRequest.prefix()) should equal(None)
   }
 
-  "listObjects" should "list all objects with a prefix if one is passed in" in {
+  "listObjects" should "request for all objects in a bucket with the specified prefix" in {
     val asyncClientMock = mock[S3AsyncClient]
 
     val listObjectsRequestCaptor: ArgumentCaptor[ListObjectsV2Request] =

@@ -72,7 +72,7 @@ trait DAS3Client[F[_]: Async]:
     * @param bucket
     *   The bucket to list objects for.
     * @param potentialPrefix
-    *   An optional prefix to filter with.
+    *   An optional prefix to filter objects with.
     * @return
     *   A ListObjectsV2Response wrapped in the F effect.
     */
