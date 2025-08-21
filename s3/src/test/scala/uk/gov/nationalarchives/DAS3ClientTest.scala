@@ -278,6 +278,68 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     ex.getMessage should equal("Bucket does not exist")
   }
 
+  "listObjects" should "request for all objects in a bucket if a prefix is not passed in" in {
+    val asyncClientMock = mock[S3AsyncClient]
+
+    val listObjectsRequestCaptor: ArgumentCaptor[ListObjectsV2Request] =
+      ArgumentCaptor.forClass(classOf[ListObjectsV2Request])
+
+    val mockResponseObject = S3Object.builder.key("test").build
+    val mockResponse = ListObjectsV2Response.builder.contents(List(mockResponseObject).asJava).build
+    when(asyncClientMock.listObjectsV2(listObjectsRequestCaptor.capture()))
+      .thenReturn(CompletableFuture.completedFuture(mockResponse))
+
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val response = client.listObjects("bucket").unsafeRunSync()
+
+    response.contents.get(0).key() should equal("test")
+
+    val capturedRequest = listObjectsRequestCaptor.getValue
+    capturedRequest.bucket() should equal("bucket")
+    Option(capturedRequest.prefix()) should equal(None)
+  }
+
+  "listObjects" should "request for all objects in a bucket with the specified prefix" in {
+    val asyncClientMock = mock[S3AsyncClient]
+
+    val listObjectsRequestCaptor: ArgumentCaptor[ListObjectsV2Request] =
+      ArgumentCaptor.forClass(classOf[ListObjectsV2Request])
+
+    val mockResponseObject = S3Object.builder.key("test").build
+    val mockResponse = ListObjectsV2Response.builder.contents(List(mockResponseObject).asJava).build
+    when(asyncClientMock.listObjectsV2(listObjectsRequestCaptor.capture()))
+      .thenReturn(CompletableFuture.completedFuture(mockResponse))
+
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val response = client.listObjects("bucket", Option("prefix")).unsafeRunSync()
+
+    response.contents.get(0).key() should equal("test")
+
+    val capturedRequest = listObjectsRequestCaptor.getValue
+    capturedRequest.bucket() should equal("bucket")
+    capturedRequest.prefix() should equal("prefix")
+  }
+
+  "listObjects" should "return an error if there is an error from S3" in {
+    val asyncClientMock = mock[S3AsyncClient]
+
+    val listObjectsRequestCaptor: ArgumentCaptor[ListObjectsV2Request] =
+      ArgumentCaptor.forClass(classOf[ListObjectsV2Request])
+
+    when(asyncClientMock.listObjectsV2(listObjectsRequestCaptor.capture()))
+      .thenThrow(new RuntimeException("Error from S3"))
+
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val error = intercept[Exception] {
+      client.listObjects("bucket").unsafeRunSync()
+    }
+
+    error.getMessage should equal("Error from S3")
+  }
+
   private def createHeadObjectResponse(): CompletableFuture[HeadObjectResponse] = {
     val headObjectResponse = HeadObjectResponse.builder().contentLength(10).build
     CompletableFuture.completedFuture(headObjectResponse)

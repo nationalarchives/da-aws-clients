@@ -67,6 +67,17 @@ trait DAS3Client[F[_]: Async]:
     */
   def upload(bucket: String, key: String, publisher: Publisher[ByteBuffer]): F[CompletedUpload]
 
+  /** List objects in a bucket with an optional prefix
+    *
+    * @param bucket
+    *   The bucket to list objects for.
+    * @param potentialPrefix
+    *   An optional prefix to filter objects with.
+    * @return
+    *   A ListObjectsV2Response wrapped in the F effect.
+    */
+  def listObjects(bucket: String, potentialPrefix: Option[String] = None): F[ListObjectsV2Response]
+
   /** Makes a head object request for an S3 object
     *
     * @param bucket
@@ -104,7 +115,7 @@ object DAS3Client:
     private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
 
   private def asyncClient(
-      credentialsProvider: AwsCredentialsProvider = DefaultCredentialsProvider.create()
+      credentialsProvider: AwsCredentialsProvider = DefaultCredentialsProvider.builder.build
   ): S3AsyncClient = S3AsyncClient
     .crtBuilder()
     .region(Region.EU_WEST_2)
@@ -120,7 +131,7 @@ object DAS3Client:
 
   def apply[F[_]: Async](roleToAssume: String, sessionName: String): DAS3Client[F] = {
     val stsClient = StsClient.builder
-      .credentialsProvider(DefaultCredentialsProvider.create())
+      .credentialsProvider(DefaultCredentialsProvider.builder.build)
       .build
     val assumeRoleRequest: AssumeRoleRequest = AssumeRoleRequest.builder
       .roleArn(roleToAssume)
@@ -221,4 +232,11 @@ object DAS3Client:
           .map(_.prefix())
         Async[F].pure(keysThatHaveSamePrefix)
 
+      def listObjects(bucket: String, potentialPrefix: Option[String]): F[ListObjectsV2Response] =
+        val listObjectsRequestBuilder = ListObjectsV2Request.builder.bucket(bucket)
+        val request = potentialPrefix
+          .map(prefix => listObjectsRequestBuilder.prefix(prefix))
+          .getOrElse(listObjectsRequestBuilder)
+          .build
+        asyncClient.listObjectsV2(request).liftF
     }

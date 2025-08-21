@@ -45,4 +45,8 @@ def listCommonPrefixes(bucket: String, keysPrefixedWith: String): IO[SdkPublishe
   fs2Client.listCommonPrefixes(bucket, keysPrefixedWith)
 }
 
+def listObjects(bucket: String, potentialPrefix: Option[String]): IO[ListObjectsV2Response] = {
+  fs2Client.listObjects(bucket, potentialPrefix)
+}
+
 ```
