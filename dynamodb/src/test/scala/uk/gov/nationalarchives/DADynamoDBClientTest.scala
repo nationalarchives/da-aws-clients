@@ -200,7 +200,7 @@ class DADynamoDBClientTest
     getAttributeValueEx.getMessage should be("Table name could not be found")
   }
 
-  "updateAttributeValues" should "pass in the correct values to the UpdateItemRequest" in {
+  "updateAttributeValues" should "pass in the correct values to the UpdateItemRequest if no condition is specified" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val sdkHttpResponse = SdkHttpResponse
       .builder()
@@ -233,6 +233,44 @@ class DADynamoDBClientTest
     updateItemCaptorValue.attributeUpdates().toString should be(
       """{mockAttribute=AttributeValueUpdate(Value=AttributeValue(S=newMockItemValue), Action=PUT)}"""
     )
+    Option(updateItemCaptorValue.conditionExpression()) should be(None)
+  }
+
+  "updateAttributeValues" should "pass in the correct values to the UpdateItemRequest if a condition is specified" in {
+    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+    val sdkHttpResponse = SdkHttpResponse
+      .builder()
+      .statusCode(200)
+      .build()
+
+    val updateItemResponseBuilder = UpdateItemResponse.builder()
+    updateItemResponseBuilder.sdkHttpResponse(sdkHttpResponse)
+
+    val clientGetItemResponse = updateItemResponseBuilder.build()
+    val clientGetItemResponseInCf = CompletableFuture.completedFuture(clientGetItemResponse)
+    val updateItemCaptor: ArgumentCaptor[UpdateItemRequest] = ArgumentCaptor.forClass(classOf[UpdateItemRequest])
+
+    when(mockDynamoDbAsyncClient.updateItem(updateItemCaptor.capture())).thenReturn(clientGetItemResponseInCf)
+
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+
+    val dynamoDbRequest =
+      DADynamoDbRequest(
+        "mockTableName",
+        Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
+        Map("mockAttribute" -> Some(AttributeValue.builder().s("newMockItemValue").build())),
+        Option("test condition")
+      )
+
+    client.updateAttributeValues(dynamoDbRequest).unsafeRunSync()
+    val updateItemCaptorValue = updateItemCaptor.getValue
+
+    updateItemCaptorValue.tableName() should be("mockTableName")
+    updateItemCaptorValue.key().toString should be("""{mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue)}""")
+    updateItemCaptorValue.attributeUpdates().toString should be(
+      """{mockAttribute=AttributeValueUpdate(Value=AttributeValue(S=newMockItemValue), Action=PUT)}"""
+    )
+    updateItemCaptorValue.conditionExpression() should be("test condition")
   }
 
   "updateAttributeValues" should "return a 200 status code if the request is fine" in {

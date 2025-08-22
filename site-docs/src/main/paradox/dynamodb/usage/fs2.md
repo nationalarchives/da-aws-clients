@@ -72,7 +72,18 @@ def updateAttributeValuesSetUpExample(tableName: String, partitionKeyName: Strin
       attributeName2 -> Some(AttributeValue.builder().s(newAttributeValue2).build())
     )
   )
+
+  val dynamoDbRequestWithCondition = DynamoDbRequest(
+    tableName,
+    Map(partitionKeyName -> partitionKeyAttribute),
+    Map(
+      attributeName -> Some(AttributeValue.builder().s(newAttributeValue).build()),
+      attributeName2 -> Some(AttributeValue.builder().s(newAttributeValue2).build())
+    ),
+    Option("attribute_exists(id)")
+  )
   fs2Client.updateAttributeValues(dynamoDbRequest)
+  fs2Client.updateAttributeValues(dynamoDbRequestWithCondition)
 }
 
 def queryItemsExample(tableName: String): Unit = {
