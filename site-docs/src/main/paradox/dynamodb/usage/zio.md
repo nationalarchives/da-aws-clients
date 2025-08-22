@@ -78,7 +78,19 @@ def updateAttributeValueSetUpExample(tableName: String, partitionKeyName: String
       attributeName2 -> Some(AttributeValue.builder().s(newAttributeValue2).build())
     )
   )
+  
+  val dynamoDbRequestWithCondition = DynamoDbRequest(
+    tableName,
+    Map(partitionKeyName -> partitionKeyAttribute),
+    Map(
+      attributeName -> Some(AttributeValue.builder().s(newAttributeValue).build()),
+      attributeName2 -> Some(AttributeValue.builder().s(newAttributeValue2).build())
+    ),
+    Option("attribute_exists(id)")
+  )
+
   zioClient.updateAttributeValues(dynamoDbRequest)
+  zioClient.updateAttributeValues(dynamoDbRequestWithCondition)
 }
 
 def queryItemsExample(tableName: String, gsiName: String): Unit = {
