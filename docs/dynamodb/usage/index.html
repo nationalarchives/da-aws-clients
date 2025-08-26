@@ -31,7 +31,7 @@
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.128*
+0.1.129*
 </div>
 </div>
 <div class="nav-toc">
@@ -107,7 +107,7 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <span class="home-icon">⌂</span>AWS Clients
 </a>
 <div class="version-number">
-0.1.128*
+0.1.129*
 </div>
 </div>
 <div class="nav-toc">
@@ -231,13 +231,10 @@ def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using Dynam
 <p>The method will return a list of items of type <code>T</code> (same type as the <code>items</code> passed into the <code>.writeItems</code> method)</p>
 <ol>
   <li>The <code>updateAttributeValues</code> method takes a dynamoDbRequest Case Class:
-    <pre class="prettyprint"><code class="language-scala">  case class DynamoDbRequest(tableName: String,
-                             partitionKeyAndItsValue: Map[String, AttributeValue],
-                             attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]])
-</code></pre>
-    <p>consisting of:</p>
+    <p>```scala  case class DynamoDbRequest(tableName: String,  partitionKeyAndItsValue: Map[String, AttributeValue],  attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]],  conditionalExpression: Option[String] = None</p>
   </li>
 </ol>
+<p>)  ```  consisting of:</p>
 <ul>
   <li>tableName - the DynamoDB table you want to make the edits in</li>
   <li>partitionKeyAndItsValue - the partition key and the value to filter it down
@@ -251,6 +248,7 @@ def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using Dynam
       <li>if you are using the .getAttributeValues method, you can set the value to None</li>
     </ul>
   </li>
+  <li>conditionalExpression - an optional conditional expression to apply to the update request</li>
 </ul>
 <ol>
   <li>
@@ -325,7 +323,7 @@ def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using Dynam
 <script type="text/javascript" src="../../lib/prettify/prettify.js"></script>
 <script type="text/javascript" src="../../lib/prettify/lang-scala.js"></script>
 <script type="text/javascript">jQuery(function(){window.prettyPrint && prettyPrint()});</script>
-<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.128-SNAPSHOT', '')});</script>
+<script type="text/javascript">jQuery(function(jq){initOldVersionWarnings(jq, '0.1.129-SNAPSHOT', '')});</script>
 
 
 </html>
