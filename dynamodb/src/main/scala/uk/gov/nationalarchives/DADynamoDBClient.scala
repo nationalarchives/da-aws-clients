@@ -34,8 +34,6 @@ trait DADynamoDBClient[F[_]: Async]:
     * @param primaryKeyAttributes
     *   A list of primary keys to delete from Dynamo (list can be any length; requests will be batched into groups of
     *   25)
-    * @param format
-    *   An implicit scanamo formatter for type T
     * @tparam T
     *   The type of the primary keys to be deleted from Dynamo
     * @return
@@ -136,7 +134,8 @@ object DADynamoDBClient:
   case class DADynamoDbRequest(
       tableName: String,
       primaryKeyAndItsValue: Map[String, AttributeValue],
-      attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]]
+      attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]],
+      conditionalExpression: Option[String] = None
   )
 
   case class DADynamoDbWriteItemRequest(
@@ -149,10 +148,11 @@ object DADynamoDBClient:
     .builder()
     .httpClient(NettyNioAsyncHttpClient.builder().build())
     .region(Region.EU_WEST_2)
-    .credentialsProvider(DefaultCredentialsProvider.create())
+    .credentialsProvider(DefaultCredentialsProvider.builder.build)
     .build()
 
-  extension [K, T](l: util.List[util.Map[K, T]]) def toScala: List[Map[K, T]] = l.asScala.toList.map(_.asScala.toMap)
+  extension [K, T](l: util.List[util.Map[K, T]])
+    private def toScala: List[Map[K, T]] = l.asScala.toList.map(_.asScala.toMap)
 
   def apply[F[_]: Async](dynamoDBClient: DynamoDbAsyncClient = dynamoDBClient): DADynamoDBClient[F] =
     new DADynamoDBClient[F] {
@@ -231,12 +231,16 @@ object DADynamoDBClient:
               .build()
           } asJava
 
-        val updateAttributeValueRequest = UpdateItemRequest
+        val updateAttributeValueRequestBuilder = UpdateItemRequest
           .builder()
           .tableName(dynamoDbRequest.tableName)
           .key(dynamoDbRequest.primaryKeyAndItsValue asJava)
           .attributeUpdates(attributeValueUpdates)
-          .build()
+
+        val updateAttributeValueRequest = dynamoDbRequest.conditionalExpression
+          .map(updateAttributeValueRequestBuilder.conditionExpression)
+          .getOrElse(updateAttributeValueRequestBuilder)
+          .build
 
         dynamoDBClient
           .updateItem(updateAttributeValueRequest)
@@ -247,12 +251,12 @@ object DADynamoDBClient:
           using returnTypeFormat: DynamoFormat[U]
       ): F[List[U]] =
         val expressionAttributeValues =
-          requestCondition.dynamoValues.flatMap(_.toExpressionAttributeValues).getOrElse(util.Collections.emptyMap())
+          requestCondition.attributes.values.toExpressionAttributeValues.getOrElse(util.Collections.emptyMap())
 
         val builder = QueryRequest.builder
           .tableName(tableName)
           .keyConditionExpression(requestCondition.expression)
-          .expressionAttributeNames(requestCondition.attributeNames.asJava)
+          .expressionAttributeNames(requestCondition.attributes.names.asJava)
           .expressionAttributeValues(expressionAttributeValues)
 
         val queryBuilder = potentialGsiName.map(gsi => builder.indexName(gsi)).getOrElse(builder)
