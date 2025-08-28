@@ -58,7 +58,10 @@ def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using Dynam
     ```scala
       case class DynamoDbRequest(tableName: String,
                                  partitionKeyAndItsValue: Map[String, AttributeValue],
-                                 attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]])
+                                 attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]],
+                                 conditionalExpression: Option[String] = None
+                                  
+   )
     ```
    consisting of:
 
@@ -68,6 +71,7 @@ def deleteItems[T](tableName: String, primaryKeyAttributes: List[T])(using Dynam
     - *Warning* adding a value that isn't already present in the table will cause DynamoDb to add another row so watch out for misspellings
 - attributeNamesAndValuesToUpdate - the key = attribute name you want the value of; the value = new value you want to take place of the current one
     - if you are using the .getAttributeValues method, you can set the value to None
+- conditionalExpression - an optional conditional expression to apply to the update request
 
 
 5. The `queryItems` method takes a table name of type `String`, a global secondary index name and a Scanamo filter query. The query is converted to a Scanamo `RequestCondition` using implicits in the companion object.
