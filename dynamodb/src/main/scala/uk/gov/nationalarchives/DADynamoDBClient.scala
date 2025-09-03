@@ -134,7 +134,7 @@ object DADynamoDBClient:
   case class DADynamoDbRequest(
       tableName: String,
       primaryKeyAndItsValue: Map[String, AttributeValue],
-      attributeNamesAndValuesToUpdate: Map[String, Option[AttributeValue]],
+      attributeNamesAndValuesToUpdate: Map[String, AttributeValue],
       conditionalExpression: Option[String] = None
   )
 
@@ -222,20 +222,18 @@ object DADynamoDBClient:
         yield result
 
       override def updateAttributeValues(dynamoDbRequest: DADynamoDbRequest): F[Int] =
-        val attributeValueUpdates =
-          dynamoDbRequest.attributeNamesAndValuesToUpdate.map { case (name, attributeValue) =>
-            name -> AttributeValueUpdate
-              .builder()
-              .action(AttributeAction.PUT)
-              .value(attributeValue.get)
-              .build()
-          } asJava
+        val toUpdate = dynamoDbRequest.attributeNamesAndValuesToUpdate
+        val updateExpression = s"SET ${toUpdate.keySet.map(attr => s"$attr = :$attr").mkString(", ")}"
+
+        val expressionAttributeValues: Map[String, AttributeValue] =
+          toUpdate.map { case (name, value) => s":$name" -> value }
 
         val updateAttributeValueRequestBuilder = UpdateItemRequest
           .builder()
           .tableName(dynamoDbRequest.tableName)
           .key(dynamoDbRequest.primaryKeyAndItsValue asJava)
-          .attributeUpdates(attributeValueUpdates)
+          .updateExpression(updateExpression)
+          .expressionAttributeValues(expressionAttributeValues.asJava)
 
         val updateAttributeValueRequest = dynamoDbRequest.conditionalExpression
           .map(updateAttributeValueRequestBuilder.conditionExpression)
