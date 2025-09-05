@@ -222,7 +222,7 @@ class DADynamoDBClientTest
       DADynamoDbRequest(
         "mockTableName",
         Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
-        Map("mockAttribute" -> Some(AttributeValue.builder().s("newMockItemValue").build()))
+        Map("mockAttribute" -> AttributeValue.builder().s("newMockItemValue").build())
       )
 
     client.updateAttributeValues(dynamoDbRequest).unsafeRunSync()
@@ -230,9 +230,8 @@ class DADynamoDBClientTest
 
     updateItemCaptorValue.tableName() should be("mockTableName")
     updateItemCaptorValue.key().toString should be("""{mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue)}""")
-    updateItemCaptorValue.attributeUpdates().toString should be(
-      """{mockAttribute=AttributeValueUpdate(Value=AttributeValue(S=newMockItemValue), Action=PUT)}"""
-    )
+    updateItemCaptorValue.updateExpression should be("SET mockAttribute = :mockAttribute")
+    updateItemCaptorValue.expressionAttributeValues.asScala(":mockAttribute").s should be("newMockItemValue")
     Option(updateItemCaptorValue.conditionExpression()) should be(None)
   }
 
@@ -258,7 +257,7 @@ class DADynamoDBClientTest
       DADynamoDbRequest(
         "mockTableName",
         Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
-        Map("mockAttribute" -> Some(AttributeValue.builder().s("newMockItemValue").build())),
+        Map("mockAttribute" -> AttributeValue.builder().s("newMockItemValue").build()),
         Option("test condition")
       )
 
@@ -267,9 +266,8 @@ class DADynamoDBClientTest
 
     updateItemCaptorValue.tableName() should be("mockTableName")
     updateItemCaptorValue.key().toString should be("""{mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue)}""")
-    updateItemCaptorValue.attributeUpdates().toString should be(
-      """{mockAttribute=AttributeValueUpdate(Value=AttributeValue(S=newMockItemValue), Action=PUT)}"""
-    )
+    updateItemCaptorValue.updateExpression should be("SET mockAttribute = :mockAttribute")
+    updateItemCaptorValue.expressionAttributeValues.asScala(":mockAttribute").s should be("newMockItemValue")
     updateItemCaptorValue.conditionExpression() should be("test condition")
   }
 
@@ -294,7 +292,7 @@ class DADynamoDBClientTest
       DADynamoDbRequest(
         "mockTableName",
         Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
-        Map("mockAttribute" -> Some(AttributeValue.builder().s("newMockItemValue").build()))
+        Map("mockAttribute" -> AttributeValue.builder().s("newMockItemValue").build())
       )
     val updateItemResponseStatusCode = client.updateAttributeValues(dynamoDbRequest).unsafeRunSync()
     updateItemResponseStatusCode should be(200)
@@ -313,7 +311,7 @@ class DADynamoDBClientTest
       DADynamoDbRequest(
         "tableNameThatDoesNotExist",
         Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
-        Map("mockAttribute" -> Some(AttributeValue.builder().s("newMockItemValue").build()))
+        Map("mockAttribute" -> AttributeValue.builder().s("newMockItemValue").build())
       )
     val updateAttributeValueEx = intercept[Exception] {
       client.updateAttributeValues(dynamoDbRequest).unsafeRunSync()
