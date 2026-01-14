@@ -12,8 +12,10 @@ group="uk.gov.nationalarchives" artifact="da-sqs-client_2.13" version=$version$
 ```scala
 import cats.effect._
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityResponse
 import uk.gov.nationalarchives.DASQSClient
 import io.circe.generic.auto._ // Used to provide Encoder[T] and Decoder[T] but you can provide your own
+import scala.concurrent.duration.*
 
   case class FifoQueueConfiguration(messageGroupId: String, messageDeduplicationId: String)
   val sqsClient: DASQSClient[IO] = DASQSClient[IO]()
@@ -34,4 +36,6 @@ import io.circe.generic.auto._ // Used to provide Encoder[T] and Decoder[T] but 
   } yield received
 
 val deletedMessages: IO[DeleteMessageResponse] = client.deleteMessage(queueUrl, "receiptHandle")
+
+val timeoutChanged: IO[ChangeMessageVisibilityResponse] = client.changeVisibilityTimeout(queueUrl)("receiptHandle", 1.seconds)
 ```

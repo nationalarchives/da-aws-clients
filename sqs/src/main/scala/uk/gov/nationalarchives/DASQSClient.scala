@@ -10,6 +10,8 @@ import software.amazon.awssdk.http.nio.netty.{NettyNioAsyncHttpClient, ProxyConf
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.{
+  ChangeMessageVisibilityRequest,
+  ChangeMessageVisibilityResponse,
   DeleteMessageRequest,
   DeleteMessageResponse,
   GetQueueAttributesRequest,
@@ -23,6 +25,7 @@ import software.amazon.awssdk.services.sqs.model.{
 import uk.gov.nationalarchives.DASQSClient.{FifoQueueConfiguration, MessageResponse}
 
 import java.net.URI
+import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters.*
 
 /** An SQS client. It is written generically so can be used for any effect which has an Async instance. Requires an
@@ -91,6 +94,19 @@ trait DASQSClient[F[_]]:
       attributeNames: List[QueueAttributeName] = List(QueueAttributeName.ALL)
   ): F[GetQueueAttributesResponse]
 
+  /** Changes the visibility timeout of a message
+    * @param queueUrl
+    *   The queue with the message which needs to change its visibility timeout
+    * @param receiptHandle
+    *   The receipt handle of the message
+    * @param timeout
+    *   The visibility timeout
+    * @return
+    */
+  def changeVisibilityTimeout(
+      queueUrl: String
+  )(receiptHandle: String, timeout: Duration): F[ChangeMessageVisibilityResponse]
+
 object DASQSClient:
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   case class MessageResponse[T](receiptHandle: String, messageGroupId: Option[String], message: T)
@@ -101,6 +117,18 @@ object DASQSClient:
     .build()
 
   def apply[F[_]: Async](sqsAsyncClient: SqsAsyncClient = sqsAsyncClient): DASQSClient[F] = new DASQSClient[F] {
+
+    def changeVisibilityTimeout(
+        queueUrl: String
+    )(receiptHandle: String, timeout: Duration): F[ChangeMessageVisibilityResponse] = {
+      val request = ChangeMessageVisibilityRequest.builder
+        .queueUrl(queueUrl)
+        .receiptHandle(receiptHandle)
+        .visibilityTimeout(timeout.toSeconds.toInt)
+        .build
+      Async[F].fromCompletableFuture(Async[F].pure(sqsAsyncClient.changeMessageVisibility(request)))
+    }
+
     def sendMessage[T <: Product](
         queueUrl: String
     )(message: T, potentialFifoConfiguration: Option[FifoQueueConfiguration] = None, delaySeconds: Int = 0)(using
