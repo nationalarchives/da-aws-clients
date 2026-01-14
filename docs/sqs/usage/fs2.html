@@ -191,8 +191,10 @@ C16.952,7,17,6.553,17,6c0-0.553-0.048-1-0.6-1H3.6C3.048,5,3,5.447,3,6C3,6.553,3.
 <h2><a href="#examples" name="examples" class="anchor"><span class="anchor-link"></span></a>Examples</h2>
 <pre class="prettyprint"><code class="language-scala">import cats.effect._
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityResponse
 import uk.gov.nationalarchives.DASQSClient
 import io.circe.generic.auto._ // Used to provide Encoder[T] and Decoder[T] but you can provide your own
+import scala.concurrent.duration.*
 
   case class FifoQueueConfiguration(messageGroupId: String, messageDeduplicationId: String)
   val sqsClient: DASQSClient[IO] = DASQSClient[IO]()
@@ -213,6 +215,8 @@ import io.circe.generic.auto._ // Used to provide Encoder[T] and Decoder[T] but 
   } yield received
 
 val deletedMessages: IO[DeleteMessageResponse] = client.deleteMessage(queueUrl, &quot;receiptHandle&quot;)
+
+val timeoutChanged: IO[ChangeMessageVisibilityResponse] = client.changeVisibilityTimeout(queueUrl)(&quot;receiptHandle&quot;, 1.seconds)
 </code></pre>
 <div class="nav-next">
 <p><strong>Next:</strong> <a href="../../ssm/usage/index.html">SSM Client</a></p>
