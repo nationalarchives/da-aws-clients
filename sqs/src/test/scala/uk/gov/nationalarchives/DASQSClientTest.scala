@@ -8,9 +8,12 @@ import org.mockito.ArgumentCaptor
 import org.mockito.Mockito.when
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.*
+import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor2}
 import org.scalatestplus.mockito.MockitoSugar
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.{
+  ChangeMessageVisibilityRequest,
+  ChangeMessageVisibilityResponse,
   DeleteMessageRequest,
   DeleteMessageResponse,
   GetQueueAttributesRequest,
@@ -27,8 +30,9 @@ import uk.gov.nationalarchives.DASQSClient.FifoQueueConfiguration
 
 import java.util.concurrent.CompletableFuture
 import scala.jdk.CollectionConverters.*
+import scala.concurrent.duration.*
 
-class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
+class DASQSClientTest extends AnyFlatSpec with MockitoSugar with TableDrivenPropertyChecks {
 
   case class Test(message: String, value: String)
 
@@ -268,4 +272,44 @@ class DASQSClientTest extends AnyFlatSpec with MockitoSugar {
       QueueAttributeName.MESSAGE_RETENTION_PERIOD
     )
   }
+
+  val times: TableFor2[FiniteDuration, Int] = Table(
+    ("duration", "timeoutSeconds"),
+    (1.second, 1),
+    (1.hour, 3600),
+    (30.minutes, 1800)
+  )
+
+  forAll(times) { (duration, timeoutSeconds) =>
+    "changeVisibilityTimeout" should s"change the visibility timeout of the requested message to $duration" in {
+      val sqsAsyncClient = mock[SqsAsyncClient]
+      val changeVisibilityCaptor: ArgumentCaptor[ChangeMessageVisibilityRequest] =
+        ArgumentCaptor.forClass(classOf[ChangeMessageVisibilityRequest])
+      when(sqsAsyncClient.changeMessageVisibility(changeVisibilityCaptor.capture()))
+        .thenReturn(CompletableFuture.completedFuture(ChangeMessageVisibilityResponse.builder.build))
+
+      val client = DASQSClient[IO](sqsAsyncClient)
+      client.changeVisibilityTimeout("https://test")("receiptHandle", duration).unsafeRunSync()
+
+      val request = changeVisibilityCaptor.getValue
+
+      request.queueUrl() should equal("https://test")
+      request.receiptHandle() should equal("receiptHandle")
+      request.visibilityTimeout() should equal(timeoutSeconds)
+    }
+  }
+
+  "changeVisibilityTimeout" should "return an error if there is an error setting the timeout" in {
+    val sqsAsyncClient = mock[SqsAsyncClient]
+    when(sqsAsyncClient.changeMessageVisibility(any[ChangeMessageVisibilityRequest]))
+      .thenThrow(new RuntimeException("Error setting visibility timeout"))
+
+    val client = DASQSClient[IO](sqsAsyncClient)
+
+    val ex = intercept[Exception] {
+      client.changeVisibilityTimeout("https://test")("receiptHandle", 1.seconds).unsafeRunSync()
+    }
+    ex.getMessage should equal("Error setting visibility timeout")
+  }
+
 }

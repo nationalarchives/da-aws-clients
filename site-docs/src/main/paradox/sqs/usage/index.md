@@ -1,6 +1,6 @@
 # SQS Client
 
-The client exposes four methods
+The client exposes five methods
 ```scala
 case class FifoQueueConfiguration(messageGroupId: String, messageDeduplicationId: String)
 
@@ -10,7 +10,7 @@ def receiveMessages[T](queueUrl: String, maxNumberOfMessages: Int = 10)(implicit
 
 def deleteMessage(queueUrl: String, receiptHandle: String): F[DeleteMessageResponse]
 
-def getQueueAttributes(queueUrl: String, attributeNames: List[QueueAttributeName] = List(QueueAttributeName.ALL)): F[GetQueueAttributesResponse]
+def changeVisibilityTimeout(queueUrl: String)(receiptHandle: String, timeout: Duration): F[ChangeMessageVisibilityResponse]
 ```
 
 The sendMessage method takes a case class and requires an implicit circe encoder to serialise the case class to JSON. 
@@ -21,6 +21,8 @@ The receiveMessages method takes a type parameter and an implicit circe decoder 
 The deleteMessages method deletes a single message with the provided receipt handle.
 
 The getQueueAttributes method returns requested attributes of the queue. There is an optional parameter to take a list of attribute names. If omitted, it retrieves `ALL` attributes of the queue.
+
+The changeVisibilityTimeout will change the visibility timeout of a single message to the value provided.
 
 @@@ index
 

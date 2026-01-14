@@ -11,10 +11,12 @@ group3="dev.zio" artifact3="zio-interop-cats_2.13" version3="23.0.0.5"
 ## Examples
 ```scala
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityResponse
 import uk.gov.nationalarchives.DASQSClient
 import zio.Task
 import zio.interop.catz._
 import io.circe.generic.auto._ // Used to provide Encoder[T] and and Decoder[T] but you can provide your own
+import scala.concurrent.duration.*
 
 val sqsClient: DASQSClient[Task] = DASQSClient[Task]()
 val queueUrl = "https://queueurl"
@@ -34,4 +36,5 @@ val receivedMessages: Task[List[MessageResponse[Message]]] = for {
 
 val deletedMessages: Task[DeleteMessageResponse] = client.deleteMessage(queueUrl, "receiptHandle")
 
+val timeoutChanged: Task[ChangeMessageVisibilityResponse] = client.changeVisibilityTimeout(queueUrl)("receiptHandle", 1.seconds)
 ```
