@@ -7,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 #v6.0.1
       - uses: sbt/setup-sbt@a627500d27445f8c5021755a439829b6e78e3358 #v1.1.15
-      - uses: scalacenter/sbt-dependency-submission@64084844d2b0a9b6c3765f33acde2fbe3f5ae7d3
-      - uses: actions/dependency-review-action@31c9f175b9cbbdee66d6ab34ed35e2c827f8be10
+      - uses: scalacenter/sbt-dependency-submission@f43202114d7522a4b233e052f82c2eea8d658134 #v3.2.1
+      - uses: actions/dependency-review-action@3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261 #v4.8.2
       - name: Run tests
         run: sbt scalafmtCheckAll test
