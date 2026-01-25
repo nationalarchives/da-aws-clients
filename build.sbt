@@ -20,7 +20,7 @@ lazy val commonSettings = Seq(
     scalaTest % Test
   ),
   dependencyOverrides += "io.netty" % "netty-codec-http" % "5.0.0.Alpha2",
-  scalaVersion := "3.7.4",
+  scalaVersion := "3.8.1",
   version := version.value,
   organization := "uk.gov.nationalarchives",
   scmInfo := Some(
