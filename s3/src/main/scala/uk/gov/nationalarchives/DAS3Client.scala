@@ -110,6 +110,27 @@ trait DAS3Client[F[_]: Async]:
       keysPrefixedWith: String
   ): F[SdkPublisher[String]]
 
+  /** Updates the tags assigned to an S3 object. It retrieves the existing tags for an object, merges them with the new
+    * set of tags, and applies the new set of tags to the object
+    *
+    * @param bucket
+    *   The name of the bucket containing the object.
+    * @param key
+    *   The key identifying the object whose tags are being updated.
+    * @param tags
+    *   A map of tag key-value pairs to assign to the object.
+    * @param version
+    *   An optional version ID of the object to apply the tags to.
+    * @return
+    *   A PutObjectTaggingResponse from AWS wrapped in the F effect. Indicates the result of the tagging operation.
+    */
+  def updateObjectTags(
+      bucket: String,
+      key: String,
+      newTags: Map[String, String],
+      version: Option[String] = None
+  ): F[PutObjectTaggingResponse]
+
 object DAS3Client:
   extension [F[_]: Async, T](completableFuture: CompletableFuture[T])
     private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
@@ -157,11 +178,11 @@ object DAS3Client:
     new DAS3Client[F] {
 
       def copy(
-          sourceBucket: String,
-          sourceKey: String,
-          destinationBucket: String,
-          destinationKey: String
-      ): F[CompletedCopy] =
+                sourceBucket: String,
+                sourceKey: String,
+                destinationBucket: String,
+                destinationKey: String
+              ): F[CompletedCopy] =
         val copyObjectRequest: CopyObjectRequest = CopyObjectRequest.builder
           .sourceBucket(sourceBucket)
           .sourceKey(sourceKey)
@@ -217,9 +238,9 @@ object DAS3Client:
         asyncClient.deleteObjects(request).liftF
 
       def listCommonPrefixes(
-          bucket: String,
-          keysPrefixedWith: String
-      ): F[SdkPublisher[String]] =
+                              bucket: String,
+                              keysPrefixedWith: String
+                            ): F[SdkPublisher[String]] =
         val listObjectsV2Request = ListObjectsV2Request.builder
           .bucket(bucket)
           .delimiter("/")
@@ -239,4 +260,31 @@ object DAS3Client:
           .getOrElse(listObjectsRequestBuilder)
           .build
         asyncClient.listObjectsV2(request).liftF
+
+      override def updateObjectTags(
+                                     bucket: String,
+                                     key: String,
+                                     newTags: Map[String, String],
+                                     version: Option[String]
+                                   ): F[PutObjectTaggingResponse] =
+        Async[F]
+          .blocking {
+            val getObjectTaggingRequest: GetObjectTaggingRequest = {
+              val getTaggingRequestBuilder = GetObjectTaggingRequest.builder()
+                .bucket(bucket)
+                .key(key)
+              version.fold(getTaggingRequestBuilder)(getTaggingRequestBuilder.versionId).build()
+            }
+            val existingTagsResponse: GetObjectTaggingResponse = asyncClient.getObjectTagging(getObjectTaggingRequest).join()
+            val mergedTags = existingTagsResponse.tagSet().asScala.map(eachTag => eachTag.key() -> eachTag.value()).toMap ++ newTags
+            val finalTags = mergedTags.map { case (k, v) => Tag.builder().key(k).value(v).build() }.toList.asJava
+            val putTaggingRequest: PutObjectTaggingRequest = {
+              val putTaggingRequestBuilder = PutObjectTaggingRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .tagging(Tagging.builder().tagSet(finalTags).build())
+              version.fold(putTaggingRequestBuilder)(putTaggingRequestBuilder.versionId).build()
+            }
+            asyncClient.putObjectTagging(putTaggingRequest)
+          }.flatMap (_.liftF)
     }

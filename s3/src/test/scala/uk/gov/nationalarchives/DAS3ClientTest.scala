@@ -131,7 +131,6 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     requestBody.sourceKey() should equal("sourceKey")
     requestBody.destinationBucket() should equal("destinationBucket")
     requestBody.destinationKey() should equal("destinationKey")
-
   }
 
   "copy" should "return an error if the transfer manager returns an error" in {
@@ -338,6 +337,53 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     }
 
     error.getMessage should equal("Error from S3")
+  }
+  
+  "updateObjectTags" should "update tags on an object with the supplied tag" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+    
+    val mockGetResponseObject = GetObjectTaggingResponse.builder().tagSet(java.util.Collections.emptyList()).build()
+    when(asyncClientMock.getObjectTagging(any[GetObjectTaggingRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockGetResponseObject))
+
+    val mockPutResponseObject = PutObjectTaggingResponse.builder().build()
+    when(asyncClientMock.putObjectTagging(any[PutObjectTaggingRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockPutResponseObject))
+    
+    val response = client.updateObjectTags("some_bucket", "some_obj", Map("soft_delete" -> "true")).unsafeRunSync()
+    response shouldBe (mockPutResponseObject)
+
+    val captor = ArgumentCaptor.forClass(classOf[PutObjectTaggingRequest])
+    verify(asyncClientMock).putObjectTagging(captor.capture())
+
+    val sentTags: Map[String, String] = captor.getValue.tagging().tagSet().asScala.map(t => t.key() -> t.value()).toMap
+
+    sentTags shouldBe Map("soft_delete" -> "true")
+  }
+
+  "updateObjectTags" should "update tags on an object with the existing as well as newly supplied tag" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val existingTags = Tag.builder().key("existing-key").value("existing-value").build()
+    val mockGetResponseObject = GetObjectTaggingResponse.builder().tagSet(existingTags).build()
+    when(asyncClientMock.getObjectTagging(any[GetObjectTaggingRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockGetResponseObject))
+
+    val mockPutResponseObject = PutObjectTaggingResponse.builder().build()
+    when(asyncClientMock.putObjectTagging(any[PutObjectTaggingRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockPutResponseObject))
+
+    val response = client.updateObjectTags("some_bucket", "some_obj", Map("soft_delete" -> "true")).unsafeRunSync()
+    response shouldBe (mockPutResponseObject)
+
+    val captor = ArgumentCaptor.forClass(classOf[PutObjectTaggingRequest])
+    verify(asyncClientMock).putObjectTagging(captor.capture())
+
+    val sentTags: Map[String, String] = captor.getValue.tagging().tagSet().asScala.map(t => t.key() -> t.value()).toMap
+
+    sentTags shouldBe Map("existing-key" -> "existing-value", "soft_delete" -> "true")
   }
 
   private def createHeadObjectResponse(): CompletableFuture[HeadObjectResponse] = {
