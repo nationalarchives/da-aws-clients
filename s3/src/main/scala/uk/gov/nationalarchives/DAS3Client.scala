@@ -280,6 +280,15 @@ object DAS3Client:
               asyncClient.getObjectTagging(getObjectTaggingRequest).join()
             val mergedTags =
               existingTagsResponse.tagSet().asScala.map(eachTag => eachTag.key() -> eachTag.value()).toMap ++ newTags
+
+            if mergedTags.size > 10 then throw new IllegalArgumentException("S3 objects cannot have nore than 10 tags")
+
+            if mergedTags.keys.exists(_.length > 128) then
+              throw new IllegalArgumentException("One or more tag keys exceed the limit of 128 characters")
+
+            if mergedTags.values.exists(_.length > 256) then
+              throw new IllegalArgumentException("One or more tag values exceed the limit of 256 characters")
+
             val finalTags = mergedTags.map { case (k, v) => Tag.builder().key(k).value(v).build() }.toList.asJava
             val putTaggingRequest: PutObjectTaggingRequest = {
               val putTaggingRequestBuilder = PutObjectTaggingRequest
