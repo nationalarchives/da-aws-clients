@@ -178,11 +178,11 @@ object DAS3Client:
     new DAS3Client[F] {
 
       def copy(
-                sourceBucket: String,
-                sourceKey: String,
-                destinationBucket: String,
-                destinationKey: String
-              ): F[CompletedCopy] =
+          sourceBucket: String,
+          sourceKey: String,
+          destinationBucket: String,
+          destinationKey: String
+      ): F[CompletedCopy] =
         val copyObjectRequest: CopyObjectRequest = CopyObjectRequest.builder
           .sourceBucket(sourceBucket)
           .sourceKey(sourceKey)
@@ -238,9 +238,9 @@ object DAS3Client:
         asyncClient.deleteObjects(request).liftF
 
       def listCommonPrefixes(
-                              bucket: String,
-                              keysPrefixedWith: String
-                            ): F[SdkPublisher[String]] =
+          bucket: String,
+          keysPrefixedWith: String
+      ): F[SdkPublisher[String]] =
         val listObjectsV2Request = ListObjectsV2Request.builder
           .bucket(bucket)
           .delimiter("/")
@@ -262,29 +262,34 @@ object DAS3Client:
         asyncClient.listObjectsV2(request).liftF
 
       override def updateObjectTags(
-                                     bucket: String,
-                                     key: String,
-                                     newTags: Map[String, String],
-                                     version: Option[String]
-                                   ): F[PutObjectTaggingResponse] =
+          bucket: String,
+          key: String,
+          newTags: Map[String, String],
+          version: Option[String]
+      ): F[PutObjectTaggingResponse] =
         Async[F]
           .blocking {
             val getObjectTaggingRequest: GetObjectTaggingRequest = {
-              val getTaggingRequestBuilder = GetObjectTaggingRequest.builder()
+              val getTaggingRequestBuilder = GetObjectTaggingRequest
+                .builder()
                 .bucket(bucket)
                 .key(key)
               version.fold(getTaggingRequestBuilder)(getTaggingRequestBuilder.versionId).build()
             }
-            val existingTagsResponse: GetObjectTaggingResponse = asyncClient.getObjectTagging(getObjectTaggingRequest).join()
-            val mergedTags = existingTagsResponse.tagSet().asScala.map(eachTag => eachTag.key() -> eachTag.value()).toMap ++ newTags
+            val existingTagsResponse: GetObjectTaggingResponse =
+              asyncClient.getObjectTagging(getObjectTaggingRequest).join()
+            val mergedTags =
+              existingTagsResponse.tagSet().asScala.map(eachTag => eachTag.key() -> eachTag.value()).toMap ++ newTags
             val finalTags = mergedTags.map { case (k, v) => Tag.builder().key(k).value(v).build() }.toList.asJava
             val putTaggingRequest: PutObjectTaggingRequest = {
-              val putTaggingRequestBuilder = PutObjectTaggingRequest.builder()
+              val putTaggingRequestBuilder = PutObjectTaggingRequest
+                .builder()
                 .bucket(bucket)
                 .key(key)
                 .tagging(Tagging.builder().tagSet(finalTags).build())
               version.fold(putTaggingRequestBuilder)(putTaggingRequestBuilder.versionId).build()
             }
             asyncClient.putObjectTagging(putTaggingRequest)
-          }.flatMap (_.liftF)
+          }
+          .flatMap(_.liftF)
     }

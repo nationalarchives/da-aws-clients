@@ -338,11 +338,11 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
 
     error.getMessage should equal("Error from S3")
   }
-  
+
   "updateObjectTags" should "update tags on an object with the supplied tag" in {
     val asyncClientMock = mock[S3AsyncClient]
     val client = DAS3Client[IO](asyncClientMock)
-    
+
     val mockGetResponseObject = GetObjectTaggingResponse.builder().tagSet(java.util.Collections.emptyList()).build()
     when(asyncClientMock.getObjectTagging(any[GetObjectTaggingRequest]))
       .thenReturn(CompletableFuture.completedFuture(mockGetResponseObject))
@@ -350,7 +350,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val mockPutResponseObject = PutObjectTaggingResponse.builder().build()
     when(asyncClientMock.putObjectTagging(any[PutObjectTaggingRequest]))
       .thenReturn(CompletableFuture.completedFuture(mockPutResponseObject))
-    
+
     val response = client.updateObjectTags("some_bucket", "some_obj", Map("soft_delete" -> "true")).unsafeRunSync()
     response shouldBe (mockPutResponseObject)
 
