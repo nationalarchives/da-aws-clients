@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
 jobs:
   deploy:
-    uses: nationalarchives/dr2-github-actions/.github/workflows/sbt_release.yml
+    uses: nationalarchives/dr2-github-actions/.github/workflows/sbt_release.yml@57cc56e2c2c70182c50150604c8f46568a94a24e
     with:
       library-name: "AWS Clients"
     secrets:
