@@ -352,7 +352,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
       .thenReturn(CompletableFuture.completedFuture(mockPutResponseObject))
 
     val response = client.updateObjectTags("some_bucket", "some_obj", Map("soft_delete" -> "true")).unsafeRunSync()
-    response shouldBe (mockPutResponseObject)
+    response shouldBe mockPutResponseObject
 
     val captor = ArgumentCaptor.forClass(classOf[PutObjectTaggingRequest])
     verify(asyncClientMock).putObjectTagging(captor.capture())
@@ -376,7 +376,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
       .thenReturn(CompletableFuture.completedFuture(mockPutResponseObject))
 
     val response = client.updateObjectTags("some_bucket", "some_obj", Map("soft_delete" -> "true")).unsafeRunSync()
-    response shouldBe (mockPutResponseObject)
+    response shouldBe mockPutResponseObject
 
     val captor = ArgumentCaptor.forClass(classOf[PutObjectTaggingRequest])
     verify(asyncClientMock).putObjectTagging(captor.capture())
