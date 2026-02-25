@@ -262,10 +262,10 @@ object DAS3Client:
         asyncClient.listObjectsV2(request).liftF
 
       def updateObjectTags(
-                            bucket: String,
-                            key: String,
-                            newTags: Map[String, String],
-                            potentialVersionId: Option[String]
+          bucket: String,
+          key: String,
+          newTags: Map[String, String],
+          potentialVersionId: Option[String]
       ): F[PutObjectTaggingResponse] =
         require(newTags.keys.forall(_.nonEmpty), "One or more tag keys is empty")
         require(newTags.keys.forall(_.length <= 128), "One or more tag keys exceed the limit of 128 characters")
