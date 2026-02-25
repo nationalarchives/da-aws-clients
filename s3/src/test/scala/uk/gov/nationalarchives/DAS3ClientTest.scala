@@ -402,7 +402,18 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     error.getMessage shouldBe "requirement failed: S3 objects cannot have nore than 10 tags"
   }
 
-  "updateObjectTags" should "report an error if a key exceeds 128 character" in {
+  "updateObjectTags" should "report an error if a key is empty" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+    val _ = setupMockTaggingInteractions(asyncClientMock, java.util.Collections.emptyList())
+    val error = intercept[Exception] {
+      client.updateObjectTags("some_bucket", "some_obj", Map("" -> "one_val")).unsafeRunSync()
+    }
+
+    error.getMessage shouldBe "requirement failed: One or more tag keys is empty"
+  }
+
+  "updateObjectTags" should "report an error if a key exceeds 128 characters" in {
     val asyncClientMock = mock[S3AsyncClient]
     val client = DAS3Client[IO](asyncClientMock)
 
@@ -419,7 +430,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     error.getMessage shouldBe "requirement failed: One or more tag keys exceed the limit of 128 characters"
   }
 
-  "updateObjectTags" should "report an error if a value exceeds 256 character" in {
+  "updateObjectTags" should "report an error if a value exceeds 256 characters" in {
     val asyncClientMock = mock[S3AsyncClient]
     val client = DAS3Client[IO](asyncClientMock)
 
