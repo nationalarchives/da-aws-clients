@@ -117,7 +117,7 @@ trait DAS3Client[F[_]: Async]:
     *   The name of the bucket containing the object.
     * @param key
     *   The key identifying the object whose tags are being updated.
-    * @param tags
+    * @param newTags
     *   A map of tag key-value pairs to assign to the object.
     * @param version
     *   An optional version ID of the object to apply the tags to.
@@ -261,43 +261,41 @@ object DAS3Client:
           .build
         asyncClient.listObjectsV2(request).liftF
 
-      override def updateObjectTags(
+      def updateObjectTags(
           bucket: String,
           key: String,
           newTags: Map[String, String],
           version: Option[String]
       ): F[PutObjectTaggingResponse] =
+        require(newTags.keys.forall(_.length <= 128), "One or more tag keys exceed the limit of 128 characters")
+        require(newTags.values.forall(_.length <= 256), "One or more tag values exceed the limit of 256 characters")
         Async[F]
           .blocking {
-            val getObjectTaggingRequest: GetObjectTaggingRequest = {
-              val getTaggingRequestBuilder = GetObjectTaggingRequest
-                .builder()
-                .bucket(bucket)
-                .key(key)
-              version.fold(getTaggingRequestBuilder)(getTaggingRequestBuilder.versionId).build()
-            }
+            val getTaggingRequestBuilder = GetObjectTaggingRequest
+              .builder()
+              .bucket(bucket)
+              .key(key)
+            version.foreach(getTaggingRequestBuilder.versionId)
+            val getObjectTaggingRequest = getTaggingRequestBuilder.build()
+
             val existingTagsResponse: GetObjectTaggingResponse =
               asyncClient.getObjectTagging(getObjectTaggingRequest).join()
+
             val mergedTags =
               existingTagsResponse.tagSet().asScala.map(eachTag => eachTag.key() -> eachTag.value()).toMap ++ newTags
 
-            if mergedTags.size > 10 then throw new IllegalArgumentException("S3 objects cannot have nore than 10 tags")
-
-            if mergedTags.keys.exists(_.length > 128) then
-              throw new IllegalArgumentException("One or more tag keys exceed the limit of 128 characters")
-
-            if mergedTags.values.exists(_.length > 256) then
-              throw new IllegalArgumentException("One or more tag values exceed the limit of 256 characters")
+            require(mergedTags.size <= 10, "S3 objects cannot have nore than 10 tags")
 
             val finalTags = mergedTags.map { case (k, v) => Tag.builder().key(k).value(v).build() }.toList.asJava
-            val putTaggingRequest: PutObjectTaggingRequest = {
-              val putTaggingRequestBuilder = PutObjectTaggingRequest
-                .builder()
-                .bucket(bucket)
-                .key(key)
-                .tagging(Tagging.builder().tagSet(finalTags).build())
-              version.fold(putTaggingRequestBuilder)(putTaggingRequestBuilder.versionId).build()
-            }
+
+            val putTaggingRequestBuilder = PutObjectTaggingRequest
+              .builder()
+              .bucket(bucket)
+              .key(key)
+              .tagging(Tagging.builder().tagSet(finalTags).build())
+            version.foreach(putTaggingRequestBuilder.versionId)
+            val putTaggingRequest = putTaggingRequestBuilder.build()
+
             asyncClient.putObjectTagging(putTaggingRequest)
           }
           .flatMap(_.liftF)

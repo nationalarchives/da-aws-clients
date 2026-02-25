@@ -399,7 +399,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
       client.updateObjectTags("some_bucket", "some_obj", moreThanTenTags).unsafeRunSync()
     }
 
-    error.getMessage shouldBe "S3 objects cannot have nore than 10 tags"
+    error.getMessage shouldBe "requirement failed: S3 objects cannot have nore than 10 tags"
   }
 
   "updateObjectTags" should "report an error if a key exceeds 128 character" in {
@@ -416,7 +416,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
       client.updateObjectTags("some_bucket", "some_obj", tagWithKeyNameTooLong).unsafeRunSync()
     }
 
-    error.getMessage shouldBe "One or more tag keys exceed the limit of 128 characters"
+    error.getMessage shouldBe "requirement failed: One or more tag keys exceed the limit of 128 characters"
   }
 
   "updateObjectTags" should "report an error if a value exceeds 256 character" in {
@@ -433,7 +433,7 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
       client.updateObjectTags("some_bucket", "some_obj", tagWithKeyNameTooLong).unsafeRunSync()
     }
 
-    error.getMessage shouldBe "One or more tag values exceed the limit of 256 characters"
+    error.getMessage shouldBe "requirement failed: One or more tag values exceed the limit of 256 characters"
   }
 
   "updateObjectTags" should "replace the existing tag if a new value is supplied for existing key" in {
@@ -453,6 +453,59 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     val sentTags: Map[String, String] = captor.getValue.tagging().tagSet().asScala.map(t => t.key() -> t.value()).toMap
 
     sentTags shouldBe Map("existing-key" -> "new-value")
+  }
+
+  "updateObjectTags" should "update tags on an object based on version of the object" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val version1 = "version-1"
+    val version2 = "version-2"
+
+    val v1Existing = GetObjectTaggingResponse
+      .builder()
+      .tagSet(Tag.builder().key("existing-V1key").value("existing-V1value").build())
+      .build()
+    val v2Existing = GetObjectTaggingResponse
+      .builder()
+      .tagSet(Tag.builder().key("existing-V2key").value("existing-V2value").build())
+      .build()
+
+    val bucket = "some_bucket"
+    val s3Obj = "some_obj"
+
+    val expectedV1Request = GetObjectTaggingRequest.builder().bucket(bucket).key(s3Obj).versionId(version1).build()
+    val expectedV2Request = GetObjectTaggingRequest.builder().bucket(bucket).key(s3Obj).versionId(version2).build()
+
+    when(asyncClientMock.getObjectTagging(expectedV1Request)).thenReturn(CompletableFuture.completedFuture(v1Existing))
+    when(asyncClientMock.getObjectTagging(expectedV2Request)).thenReturn(CompletableFuture.completedFuture(v2Existing))
+
+    val mockPutResponseObject = PutObjectTaggingResponse.builder().build()
+    when(asyncClientMock.putObjectTagging(any[PutObjectTaggingRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockPutResponseObject))
+
+    val _ = client
+      .updateObjectTags("some_bucket", "some_obj", Map("new-V1key" -> "new-V1value"), Some(version1))
+      .unsafeRunSync()
+    val _ = client
+      .updateObjectTags("some_bucket", "some_obj", Map("existing-V2key" -> "new-V2value"), Some(version2))
+      .unsafeRunSync()
+
+    val captor = ArgumentCaptor.forClass(classOf[PutObjectTaggingRequest])
+    verify(asyncClientMock, times(2)).putObjectTagging(captor.capture())
+
+    val allPutRequests = captor.getAllValues.asScala.toList
+    val sentTagsV1 =
+      allPutRequests.find(_.versionId() == version1).get.tagging().tagSet().asScala.map(t => t.key() -> t.value()).toMap
+    val sentTagsV2 =
+      allPutRequests.find(_.versionId() == version2).get.tagging().tagSet().asScala.map(t => t.key() -> t.value()).toMap
+
+    sentTagsV1.size shouldBe 2
+    sentTagsV1 should contain("existing-V1key" -> "existing-V1value")
+    sentTagsV1 should contain("new-V1key" -> "new-V1value")
+
+    sentTagsV2.size shouldBe 1
+    sentTagsV2 should contain("existing-V2key" -> "new-V2value")
   }
 
   private def createHeadObjectResponse(): CompletableFuture[HeadObjectResponse] = {
