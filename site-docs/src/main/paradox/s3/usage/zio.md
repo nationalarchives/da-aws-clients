@@ -51,7 +51,11 @@ def listCommonPrefixes(bucket: String, keysPrefixedWith: String): Task[SdkPublis
 }
 
 def listObjects(bucket: String, potentialPrefix: Option[String]): Task[ListObjectsV2Response] = {
-  fs2Client.listObjects(bucket, potentialPrefix)
+  s3Client.listObjects(bucket, potentialPrefix)
+}
+
+def updateObjectTags(bucket: String, key: String, newTags: Map[String, String], potentialVersionId: Option[String]): Task[PutObjectTaggingResponse] = {
+  s3Client.updateObjectTags(bucket, key, newTags, potentialVersionId)
 }
 
 ```

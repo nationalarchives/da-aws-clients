@@ -131,7 +131,6 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     requestBody.sourceKey() should equal("sourceKey")
     requestBody.destinationBucket() should equal("destinationBucket")
     requestBody.destinationKey() should equal("destinationKey")
-
   }
 
   "copy" should "return an error if the transfer manager returns an error" in {
@@ -340,6 +339,186 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
     error.getMessage should equal("Error from S3")
   }
 
+  "updateObjectTags" should "update tags on an object with the supplied tag" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val mockPutResponseObject: PutObjectTaggingResponse =
+      setupMockTaggingInteractions(asyncClientMock, java.util.Collections.emptyList())
+
+    val response = client.updateObjectTags("some_bucket", "some_obj", Map("soft_delete" -> "true")).unsafeRunSync()
+    response shouldBe mockPutResponseObject
+
+    val captor = ArgumentCaptor.forClass(classOf[PutObjectTaggingRequest])
+    verify(asyncClientMock).putObjectTagging(captor.capture())
+
+    val sentTags: Map[String, String] = captor.getValue.tagging().tagSet().asScala.map(t => t.key() -> t.value()).toMap
+
+    sentTags shouldBe Map("soft_delete" -> "true")
+  }
+
+  "updateObjectTags" should "update tags on an object with the existing as well as newly supplied tag" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val existingTags = List(Tag.builder().key("existing-key").value("existing-value").build()).asJava
+    val mockPutResponseObject: PutObjectTaggingResponse = setupMockTaggingInteractions(asyncClientMock, existingTags)
+
+    val response = client.updateObjectTags("some_bucket", "some_obj", Map("soft_delete" -> "true")).unsafeRunSync()
+    response shouldBe mockPutResponseObject
+
+    val captor = ArgumentCaptor.forClass(classOf[PutObjectTaggingRequest])
+    verify(asyncClientMock).putObjectTagging(captor.capture())
+
+    val sentTags: Map[String, String] = captor.getValue.tagging().tagSet().asScala.map(t => t.key() -> t.value()).toMap
+
+    sentTags shouldBe Map("existing-key" -> "existing-value", "soft_delete" -> "true")
+  }
+
+  "updateObjectTags" should "report an error if the number of tags exceed 10" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val _ = setupMockTaggingInteractions(asyncClientMock, java.util.Collections.emptyList())
+
+    val moreThanTenTags = Map(
+      "one_key" -> "one_val",
+      "two_key" -> "two_val",
+      "three_key" -> "three_val",
+      "four_key" -> "four_val",
+      "five_key" -> "five_val",
+      "six_key" -> "six_val",
+      "seven_key" -> "seven_val",
+      "eight_key" -> "eight_val",
+      "nine_key" -> "nine_val",
+      "ten_key" -> "ten_val",
+      "eleven_key" -> "eleven_val"
+    )
+
+    val error = intercept[Exception] {
+      client.updateObjectTags("some_bucket", "some_obj", moreThanTenTags).unsafeRunSync()
+    }
+
+    error.getMessage shouldBe "requirement failed: S3 objects cannot have nore than 10 tags"
+  }
+
+  "updateObjectTags" should "report an error if a key is empty" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+    val _ = setupMockTaggingInteractions(asyncClientMock, java.util.Collections.emptyList())
+    val error = intercept[Exception] {
+      client.updateObjectTags("some_bucket", "some_obj", Map("" -> "one_val")).unsafeRunSync()
+    }
+
+    error.getMessage shouldBe "requirement failed: One or more tag keys is empty"
+  }
+
+  "updateObjectTags" should "report an error if a key exceeds 128 characters" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val _ = setupMockTaggingInteractions(asyncClientMock, java.util.Collections.emptyList())
+
+    val tagWithKeyNameTooLong = Map(
+      "this_is_an_important_s3_tag_key_that_somehow_kept_typing_and_typing_until_it_broke_the_128_character_limit_allowance_of_s3_object" -> "one_val"
+    )
+
+    val error = intercept[Exception] {
+      client.updateObjectTags("some_bucket", "some_obj", tagWithKeyNameTooLong).unsafeRunSync()
+    }
+
+    error.getMessage shouldBe "requirement failed: One or more tag keys exceed the limit of 128 characters"
+  }
+
+  "updateObjectTags" should "report an error if a value exceeds 256 characters" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val _ = setupMockTaggingInteractions(asyncClientMock, java.util.Collections.emptyList())
+
+    val tagWithKeyNameTooLong = Map(
+      "won_ky" -> "this_is_an_important_s3_tag_value_that_somehow_kept_typing_and_typing_until_it_broke_the_256_character_limit_allowance_of_s3_object_by_writing_a_few_random_words_in_a_sentence_until_all_of_these_words_ended_up_into_a_bunch_of_words_that_no_person_understood"
+    )
+
+    val error = intercept[Exception] {
+      client.updateObjectTags("some_bucket", "some_obj", tagWithKeyNameTooLong).unsafeRunSync()
+    }
+
+    error.getMessage shouldBe "requirement failed: One or more tag values exceed the limit of 256 characters"
+  }
+
+  "updateObjectTags" should "replace the existing tag if a new value is supplied for existing key" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val existingTags = List(Tag.builder().key("existing-key").value("existing-value").build()).asJava
+    val mockPutResponseObject: PutObjectTaggingResponse = setupMockTaggingInteractions(asyncClientMock, existingTags)
+
+    val response =
+      client.updateObjectTags("some_bucket", "some_obj", Map("existing-key" -> "new-value")).unsafeRunSync()
+    response shouldBe mockPutResponseObject
+
+    val captor = ArgumentCaptor.forClass(classOf[PutObjectTaggingRequest])
+    verify(asyncClientMock).putObjectTagging(captor.capture())
+
+    val sentTags: Map[String, String] = captor.getValue.tagging().tagSet().asScala.map(t => t.key() -> t.value()).toMap
+
+    sentTags shouldBe Map("existing-key" -> "new-value")
+  }
+
+  "updateObjectTags" should "update tags on an object based on version of the object" in {
+    val asyncClientMock = mock[S3AsyncClient]
+    val client = DAS3Client[IO](asyncClientMock)
+
+    val version1 = "version-1"
+    val version2 = "version-2"
+
+    val v1Existing = GetObjectTaggingResponse
+      .builder()
+      .tagSet(Tag.builder().key("existing-V1key").value("existing-V1value").build())
+      .build()
+    val v2Existing = GetObjectTaggingResponse
+      .builder()
+      .tagSet(Tag.builder().key("existing-V2key").value("existing-V2value").build())
+      .build()
+
+    val bucket = "some_bucket"
+    val s3Obj = "some_obj"
+
+    val expectedV1Request = GetObjectTaggingRequest.builder().bucket(bucket).key(s3Obj).versionId(version1).build()
+    val expectedV2Request = GetObjectTaggingRequest.builder().bucket(bucket).key(s3Obj).versionId(version2).build()
+
+    when(asyncClientMock.getObjectTagging(expectedV1Request)).thenReturn(CompletableFuture.completedFuture(v1Existing))
+    when(asyncClientMock.getObjectTagging(expectedV2Request)).thenReturn(CompletableFuture.completedFuture(v2Existing))
+
+    val mockPutResponseObject = PutObjectTaggingResponse.builder().build()
+    when(asyncClientMock.putObjectTagging(any[PutObjectTaggingRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockPutResponseObject))
+
+    val _ = client
+      .updateObjectTags("some_bucket", "some_obj", Map("new-V1key" -> "new-V1value"), Some(version1))
+      .unsafeRunSync()
+    val _ = client
+      .updateObjectTags("some_bucket", "some_obj", Map("existing-V2key" -> "new-V2value"), Some(version2))
+      .unsafeRunSync()
+
+    val captor = ArgumentCaptor.forClass(classOf[PutObjectTaggingRequest])
+    verify(asyncClientMock, times(2)).putObjectTagging(captor.capture())
+
+    val allPutRequests = captor.getAllValues.asScala.toList
+    val sentTagsV1 =
+      allPutRequests.find(_.versionId() == version1).get.tagging().tagSet().asScala.map(t => t.key() -> t.value()).toMap
+    val sentTagsV2 =
+      allPutRequests.find(_.versionId() == version2).get.tagging().tagSet().asScala.map(t => t.key() -> t.value()).toMap
+
+    sentTagsV1.size shouldBe 2
+    sentTagsV1 should contain("existing-V1key" -> "existing-V1value")
+    sentTagsV1 should contain("new-V1key" -> "new-V1value")
+
+    sentTagsV2.size shouldBe 1
+    sentTagsV2 should contain("existing-V2key" -> "new-V2value")
+  }
+
   private def createHeadObjectResponse(): CompletableFuture[HeadObjectResponse] = {
     val headObjectResponse = HeadObjectResponse.builder().contentLength(10).build
     CompletableFuture.completedFuture(headObjectResponse)
@@ -383,4 +562,16 @@ class DAS3ClientTest extends AnyFlatSpec with MockitoSugar {
       .build()
     new DefaultTransferProgress(progressSnapshot)
   }
+
+  private def setupMockTaggingInteractions(asyncClientMock: S3AsyncClient, existingTags: java.util.Collection[Tag]) = {
+    val mockGetResponseObject = GetObjectTaggingResponse.builder().tagSet(existingTags).build()
+    when(asyncClientMock.getObjectTagging(any[GetObjectTaggingRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockGetResponseObject))
+
+    val mockPutResponseObject = PutObjectTaggingResponse.builder().build()
+    when(asyncClientMock.putObjectTagging(any[PutObjectTaggingRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockPutResponseObject))
+    mockPutResponseObject
+  }
+
 }

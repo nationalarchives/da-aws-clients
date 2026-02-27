@@ -110,6 +110,27 @@ trait DAS3Client[F[_]: Async]:
       keysPrefixedWith: String
   ): F[SdkPublisher[String]]
 
+  /** Updates the tags assigned to an S3 object. It retrieves the existing tags for an object, merges them with the new
+    * set of tags, and applies the new set of tags to the object
+    *
+    * @param bucket
+    *   The name of the bucket containing the object.
+    * @param key
+    *   The key identifying the object whose tags are being updated.
+    * @param newTags
+    *   A map of tag key-value pairs to assign to the object.
+    * @param potentialVersionId
+    *   An optional version ID of the object to apply the tags to.
+    * @return
+    *   A PutObjectTaggingResponse from AWS wrapped in the F effect. Indicates the result of the tagging operation.
+    */
+  def updateObjectTags(
+      bucket: String,
+      key: String,
+      newTags: Map[String, String],
+      potentialVersionId: Option[String] = None
+  ): F[PutObjectTaggingResponse]
+
 object DAS3Client:
   extension [F[_]: Async, T](completableFuture: CompletableFuture[T])
     private def liftF: F[T] = Async[F].fromCompletableFuture(Async[F].pure(completableFuture))
@@ -239,4 +260,41 @@ object DAS3Client:
           .getOrElse(listObjectsRequestBuilder)
           .build
         asyncClient.listObjectsV2(request).liftF
+
+      def updateObjectTags(
+          bucket: String,
+          key: String,
+          newTags: Map[String, String],
+          potentialVersionId: Option[String]
+      ): F[PutObjectTaggingResponse] =
+        require(newTags.keys.forall(_.nonEmpty), "One or more tag keys is empty")
+        require(newTags.keys.forall(_.length <= 128), "One or more tag keys exceed the limit of 128 characters")
+        require(newTags.values.forall(_.length <= 256), "One or more tag values exceed the limit of 256 characters")
+
+        val getTaggingRequestBuilder = GetObjectTaggingRequest
+          .builder()
+          .bucket(bucket)
+          .key(key)
+        potentialVersionId.foreach(getTaggingRequestBuilder.versionId)
+        val getObjectTaggingRequest = getTaggingRequestBuilder.build()
+
+        val existingTagsResponse: GetObjectTaggingResponse =
+          asyncClient.getObjectTagging(getObjectTaggingRequest).join()
+
+        val mergedTags =
+          existingTagsResponse.tagSet().asScala.map(eachTag => eachTag.key() -> eachTag.value()).toMap ++ newTags
+
+        require(mergedTags.size <= 10, "S3 objects cannot have nore than 10 tags")
+
+        val finalTags = mergedTags.map { case (k, v) => Tag.builder().key(k).value(v).build() }.toList.asJava
+
+        val putTaggingRequestBuilder = PutObjectTaggingRequest
+          .builder()
+          .bucket(bucket)
+          .key(key)
+          .tagging(Tagging.builder().tagSet(finalTags).build())
+        potentialVersionId.foreach(putTaggingRequestBuilder.versionId)
+        val putTaggingRequest = putTaggingRequestBuilder.build()
+
+        asyncClient.putObjectTagging(putTaggingRequest).liftF
     }

@@ -49,4 +49,8 @@ def listObjects(bucket: String, potentialPrefix: Option[String]): IO[ListObjects
   fs2Client.listObjects(bucket, potentialPrefix)
 }
 
+def updateObjectTags(bucket: String, key: String, newTags: Map[String, String], potentialVersionId: Option[String]): IO[PutObjectTaggingResponse] = {
+  fs2Client.updateObjectTags(bucket, key, newTags, potentialVersionId)
+}
+
 ```

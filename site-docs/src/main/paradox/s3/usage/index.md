@@ -28,6 +28,9 @@ def deleteObjects(bucket: String, keys: List[String]): F[DeleteObjectsResponse]
 def listCommonPrefixes(bucket: String, keysPrefixedWith: String): F[SdkPublisher[String]]
 
 def listObjects(bucket: String, potentialPrefix: Option[String] = None): F[ListObjectsV2Response]
+
+def updateObjectTags(bucket: String, key: String, newTags: Map[String, String], potentialVersionId: Option[String] = None): F[PutObjectTaggingResponse]
+
 ```
 
 The upload and download methods stream the data using the Java Reactive streams standard. 
