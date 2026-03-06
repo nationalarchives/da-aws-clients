@@ -1,7 +1,6 @@
 name: Run Scala Steward
 on:
   workflow_dispatch:
-  push:
   schedule:
     - cron: '15 8 */3 * *'
 permissions:
@@ -24,7 +23,6 @@ jobs:
       - name: Launch Scala Steward
         uses: scala-steward-org/scala-steward-action@df2a4cec1721d0b48be3e1d1f0acdf7543ea0fb4 # v2.84.0
         with:
-          github-token: ${{ secrets.WORKFLOW_TOKEN }}
           sign-commits: true
           signing-key: ${{ secrets.GPG_KEY_ID }}
           author-email: ${{ steps.import_gpg.outputs.email }}
