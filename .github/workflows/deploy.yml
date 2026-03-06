@@ -1,6 +1,9 @@
 name: DP Deploy AWS Clients
 on:
   workflow_dispatch:
+permissions:
+  id-token: write
+  contents: write
 env:
   BRANCH_NAME: version-bump-${{ github.run_id }}${{ github.run_attempt }}
 jobs:
