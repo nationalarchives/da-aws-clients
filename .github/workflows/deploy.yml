@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: sbt/setup-sbt@a627500d27445f8c5021755a439829b6e78e3358 # v1.1.15
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
         with:
@@ -28,6 +29,12 @@ jobs:
         run: gh pr create --fill --label 'Version bump'
         env:
           GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+      - uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.MANAGEMENT_ACCOUNT }}:role/mgmt-library-put-events-role
+          aws-region: eu-west-2
+          role-session-name: DAAWSClientDeploySendMessage
+      - run: pip install boto3
       - if: failure()
         run: python .github/scripts/send_message.py
         env:
