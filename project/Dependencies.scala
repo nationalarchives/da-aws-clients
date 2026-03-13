@@ -1,21 +1,20 @@
 import sbt._
 
 object Dependencies {
-  private val awsSdkVersion = "2.42.8"
+  private val awsSdkVersion = "2.42.12"
   private val circeVersion = "0.14.15"
-
   private lazy val scalaTestVersion = "3.2.19"
 
-  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.43.7"
+  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.43.8"
   lazy val catsCore = "org.typelevel" %% "cats-core" % "2.13.0"
-  lazy val catsEffect = "org.typelevel" %% "cats-effect" % "3.6.3"
+  lazy val catsEffect = "org.typelevel" %% "cats-effect" % "3.7.0"
   lazy val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
   lazy val circeParser = "io.circe" %% "circe-parser" % circeVersion
   lazy val circe = "io.circe" %% "circe-core" % circeVersion
   lazy val dynamoDB = "software.amazon.awssdk" % "dynamodb" % awsSdkVersion
   lazy val eventBridgeSdk = "software.amazon.awssdk" % "eventbridge" % awsSdkVersion
   lazy val mockito = "org.scalatestplus" %% "mockito-5-10" % "3.2.18.0"
-  lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.8.3"
+  lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.8.4"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val stsSdk = "software.amazon.awssdk" % "sts" % awsSdkVersion
   lazy val scalaTest = "org.scalatest" %% "scalatest" % scalaTestVersion
