@@ -235,6 +235,42 @@ class DADynamoDBClientTest
     Option(updateItemCaptorValue.conditionExpression()) should be(None)
   }
 
+  "updateAttributeValues" should "pass in the correct values to the UpdateItemRequest if the ttl field is updated" in {
+    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+    val sdkHttpResponse = SdkHttpResponse
+      .builder()
+      .statusCode(200)
+      .build()
+
+    val updateItemResponseBuilder = UpdateItemResponse.builder()
+    updateItemResponseBuilder.sdkHttpResponse(sdkHttpResponse)
+
+    val clientGetItemResponse = updateItemResponseBuilder.build()
+    val clientGetItemResponseInCf = CompletableFuture.completedFuture(clientGetItemResponse)
+    val updateItemCaptor: ArgumentCaptor[UpdateItemRequest] = ArgumentCaptor.forClass(classOf[UpdateItemRequest])
+
+    when(mockDynamoDbAsyncClient.updateItem(updateItemCaptor.capture())).thenReturn(clientGetItemResponseInCf)
+
+    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+
+    val dynamoDbRequest =
+      DADynamoDbRequest(
+        "mockTableName",
+        Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
+        Map("ttl" -> AttributeValue.builder().s("1").build())
+      )
+
+    client.updateAttributeValues(dynamoDbRequest).unsafeRunSync()
+    val updateItemCaptorValue = updateItemCaptor.getValue
+
+    updateItemCaptorValue.tableName() should be("mockTableName")
+    updateItemCaptorValue.key().toString should be("""{mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue)}""")
+    updateItemCaptorValue.updateExpression should be("SET #tt = :ttl")
+    updateItemCaptorValue.expressionAttributeValues.asScala(":ttl").s should be("1")
+    updateItemCaptorValue.expressionAttributeNames().asScala("#tt") should be("ttl")
+    Option(updateItemCaptorValue.conditionExpression()) should be(None)
+  }
+
   "updateAttributeValues" should "pass in the correct values to the UpdateItemRequest if a condition is specified" in {
     val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
     val sdkHttpResponse = SdkHttpResponse

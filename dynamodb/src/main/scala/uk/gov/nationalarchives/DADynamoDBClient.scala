@@ -223,7 +223,18 @@ object DADynamoDBClient:
 
       override def updateAttributeValues(dynamoDbRequest: DADynamoDbRequest): F[Int] =
         val toUpdate = dynamoDbRequest.attributeNamesAndValuesToUpdate
-        val updateExpression = s"SET ${toUpdate.keySet.map(attr => s"$attr = :$attr").mkString(", ")}"
+
+        val reservedWords = List("ttl") // Can add more if we need them
+
+        val updateExpression =
+          s"SET ${toUpdate.keySet
+              .map(attr => if reservedWords.contains(attr) then s"#${attr.dropRight(1)} = :$attr" else s"$attr = :$attr")
+              .mkString(", ")}"
+
+        val expressionAttributeNames = toUpdate.keySet
+          .find(reservedWords.contains)
+          .map(r => Map(s"#${r.dropRight(1)}" -> r))
+          .getOrElse(Map())
 
         val expressionAttributeValues: Map[String, AttributeValue] =
           toUpdate.map { case (name, value) => s":$name" -> value }
@@ -231,9 +242,10 @@ object DADynamoDBClient:
         val updateAttributeValueRequestBuilder = UpdateItemRequest
           .builder()
           .tableName(dynamoDbRequest.tableName)
-          .key(dynamoDbRequest.primaryKeyAndItsValue asJava)
+          .key(dynamoDbRequest.primaryKeyAndItsValue.asJava)
           .updateExpression(updateExpression)
           .expressionAttributeValues(expressionAttributeValues.asJava)
+          .expressionAttributeNames(expressionAttributeNames.asJava)
 
         val updateAttributeValueRequest = dynamoDbRequest.conditionalExpression
           .map(updateAttributeValueRequestBuilder.conditionExpression)
