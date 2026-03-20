@@ -150,6 +150,8 @@ object DADynamoDBClient:
     .region(Region.EU_WEST_2)
     .credentialsProvider(DefaultCredentialsProvider.builder.build)
     .build()
+  
+  private val reservedWords = List("ttl") // Can add more if we need them
 
   extension [K, T](l: util.List[util.Map[K, T]])
     private def toScala: List[Map[K, T]] = l.asScala.toList.map(_.asScala.toMap)
@@ -223,8 +225,6 @@ object DADynamoDBClient:
 
       override def updateAttributeValues(dynamoDbRequest: DADynamoDbRequest): F[Int] =
         val toUpdate = dynamoDbRequest.attributeNamesAndValuesToUpdate
-
-        val reservedWords = List("ttl") // Can add more if we need them
 
         val updateExpression =
           s"SET ${toUpdate.keySet
