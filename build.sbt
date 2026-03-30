@@ -20,8 +20,15 @@ lazy val commonSettings = Seq(
     scalaTest % Test
   ),
   dependencyOverrides ++= Seq(
+    nettyBuffer,
+    nettyCodecHttp2,
+    nettyCodecHttp,
     nettyCodec,
-    nettyCodecHttp
+    nettyCommon,
+    nettyHandler,
+    nettyResolver,
+    nettyTransportClasses,
+    nettyTransport,
   ),
   scalaVersion := "3.8.2",
   version := version.value,
