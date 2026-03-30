@@ -30,10 +30,11 @@ jobs:
           git config --global user.email 181243999+tna-da-bot@users.noreply.github.com
           git config --global user.name tna-da-bot
           git checkout -b $BRANCH_NAME
+          git remote set-url origin "https://x-access-token:$GH_TOKEN@github.com/nationalarchives/da-aws-clients.git"
           git push -u origin $BRANCH_NAME
           sbt '+release with-defaults'
         env:
-          GITHUB_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
       - name: Create Pull Request
