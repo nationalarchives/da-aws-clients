@@ -33,6 +33,7 @@ jobs:
           git push -u origin $BRANCH_NAME
           sbt '+release with-defaults'
         env:
+          GH_TOKEN: ${{ github.token }}
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
       - name: Create Pull Request
