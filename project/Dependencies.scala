@@ -14,6 +14,8 @@ object Dependencies {
   lazy val dynamoDB = "software.amazon.awssdk" % "dynamodb" % awsSdkVersion
   lazy val eventBridgeSdk = "software.amazon.awssdk" % "eventbridge" % awsSdkVersion
   lazy val mockito = "org.scalatestplus" %% "mockito-5-10" % "3.2.18.0"
+  lazy val nettyCodec = "io.netty" % "netty-codec" % "5.0.0.Alpha2"
+  lazy val nettyCodecHttp = "io.netty" % "netty-codec-http" % "5.0.0.Alpha2"
   lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.8.4"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val stsSdk = "software.amazon.awssdk" % "sts" % awsSdkVersion
