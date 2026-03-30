@@ -19,7 +19,17 @@ lazy val commonSettings = Seq(
     mockito % Test,
     scalaTest % Test
   ),
-  dependencyOverrides += "io.netty" % "netty-codec-http" % "5.0.0.Alpha2",
+  dependencyOverrides ++= Seq(
+    nettyBuffer,
+    nettyCodecHttp2,
+    nettyCodecHttp,
+    nettyCodec,
+    nettyCommon,
+    nettyHandler,
+    nettyResolver,
+    nettyTransportClasses,
+    nettyTransport,
+  ),
   scalaVersion := "3.8.2",
   version := version.value,
   organization := "uk.gov.nationalarchives",

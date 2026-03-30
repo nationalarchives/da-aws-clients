@@ -1,11 +1,12 @@
 import sbt._
 
 object Dependencies {
-  private val awsSdkVersion = "2.42.13"
+  private val awsSdkVersion = "2.42.23"
   private val circeVersion = "0.14.15"
-  private lazy val scalaTestVersion = "3.2.19"
+  private lazy val nettyVersion = "4.1.132.Final"
+  private lazy val scalaTestVersion = "3.2.20"
 
-  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.43.8"
+  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.43.9"
   lazy val catsCore = "org.typelevel" %% "cats-core" % "2.13.0"
   lazy val catsEffect = "org.typelevel" %% "cats-effect" % "3.7.0"
   lazy val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
@@ -14,6 +15,15 @@ object Dependencies {
   lazy val dynamoDB = "software.amazon.awssdk" % "dynamodb" % awsSdkVersion
   lazy val eventBridgeSdk = "software.amazon.awssdk" % "eventbridge" % awsSdkVersion
   lazy val mockito = "org.scalatestplus" %% "mockito-5-10" % "3.2.18.0"
+  lazy val nettyBuffer = "io.netty" % "netty-buffer" % nettyVersion
+  lazy val nettyCodecHttp2 = "io.netty" % "netty-codec-http2" % nettyVersion
+  lazy val nettyCodecHttp = "io.netty" % "netty-codec-http" % nettyVersion
+  lazy val nettyCodec = "io.netty" % "netty-codec" % nettyVersion
+  lazy val nettyCommon = "io.netty" % "netty-common" % nettyVersion
+  lazy val nettyHandler = "io.netty" % "netty-handler" % nettyVersion
+  lazy val nettyResolver = "io.netty" % "netty-resolver" % nettyVersion
+  lazy val nettyTransportClasses = "io.netty" % "netty-transport-classes-epoll" % nettyVersion
+  lazy val nettyTransport = "io.netty" % "netty-transport" % nettyVersion
   lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.8.4"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val stsSdk = "software.amazon.awssdk" % "sts" % awsSdkVersion
