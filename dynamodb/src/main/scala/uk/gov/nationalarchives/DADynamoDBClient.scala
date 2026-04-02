@@ -231,11 +231,6 @@ object DADynamoDBClient:
               .map(attr => if reservedWords.contains(attr) then s"#${attr.dropRight(1)} = :$attr" else s"$attr = :$attr")
               .mkString(", ")}"
 
-        val expressionAttributeNames = toUpdate.keySet
-          .find(reservedWords.contains)
-          .map(r => Map(s"#${r.dropRight(1)}" -> r))
-          .getOrElse(Map())
-
         val expressionAttributeValues: Map[String, AttributeValue] =
           toUpdate.map { case (name, value) => s":$name" -> value }
 
@@ -245,11 +240,16 @@ object DADynamoDBClient:
           .key(dynamoDbRequest.primaryKeyAndItsValue.asJava)
           .updateExpression(updateExpression)
           .expressionAttributeValues(expressionAttributeValues.asJava)
-          .expressionAttributeNames(expressionAttributeNames.asJava)
+
+        val builderWithExpressionNames = toUpdate.keySet
+          .find(reservedWords.contains)
+          .map(r => Map(s"#${r.dropRight(1)}" -> r).asJava)
+          .map(updateAttributeValueRequestBuilder.expressionAttributeNames)
+          .getOrElse(updateAttributeValueRequestBuilder)
 
         val updateAttributeValueRequest = dynamoDbRequest.conditionalExpression
-          .map(updateAttributeValueRequestBuilder.conditionExpression)
-          .getOrElse(updateAttributeValueRequestBuilder)
+          .map(builderWithExpressionNames.conditionExpression)
+          .getOrElse(builderWithExpressionNames)
           .build
 
         dynamoDBClient
