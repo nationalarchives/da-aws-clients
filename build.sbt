@@ -28,9 +28,9 @@ lazy val commonSettings = Seq(
     nettyHandler,
     nettyResolver,
     nettyTransportClasses,
-    nettyTransport,
+    nettyTransport
   ),
-  scalaVersion := "3.8.2",
+  scalaVersion := "3.8.3",
   version := version.value,
   organization := "uk.gov.nationalarchives",
   scmInfo := Some(
