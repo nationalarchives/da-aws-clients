@@ -41,7 +41,7 @@ object DAEventBridgeClient:
   private lazy val asyncClient: EventBridgeAsyncClient = EventBridgeAsyncClient.builder
     .httpClient(httpClient)
     .region(Region.EU_WEST_2)
-    .credentialsProvider(DefaultCredentialsProvider.create())
+    .credentialsProvider(DefaultCredentialsProvider.builder.build)
     .build()
 
   def apply[F[_]: Async](eventBridgeAsyncClient: EventBridgeAsyncClient = asyncClient): DAEventBridgeClient[F] =
