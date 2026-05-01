@@ -24,7 +24,7 @@ object Dependencies {
   lazy val nettyResolver = "io.netty" % "netty-resolver" % nettyVersion
   lazy val nettyTransportClasses = "io.netty" % "netty-transport-classes-epoll" % nettyVersion
   lazy val nettyTransport = "io.netty" % "netty-transport" % nettyVersion
-  lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.8.4"
+  lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.8.5"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val stsSdk = "software.amazon.awssdk" % "sts" % awsSdkVersion
   lazy val scalaTest = "org.scalatest" %% "scalatest" % scalaTestVersion
