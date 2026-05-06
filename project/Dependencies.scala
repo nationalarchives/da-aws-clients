@@ -1,12 +1,12 @@
 import sbt._
 
 object Dependencies {
-  private val awsSdkVersion = "2.42.33"
+  private val awsSdkVersion = "2.42.41"
   private val circeVersion = "0.14.15"
-  private lazy val nettyVersion = "4.2.12.Final"
+  private lazy val nettyVersion = "4.1.133.Final"
   private lazy val scalaTestVersion = "3.2.20"
 
-  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.44.0"
+  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.45.2"
   lazy val catsCore = "org.typelevel" %% "cats-core" % "2.13.0"
   lazy val catsEffect = "org.typelevel" %% "cats-effect" % "3.7.0"
   lazy val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
@@ -24,7 +24,7 @@ object Dependencies {
   lazy val nettyResolver = "io.netty" % "netty-resolver" % nettyVersion
   lazy val nettyTransportClasses = "io.netty" % "netty-transport-classes-epoll" % nettyVersion
   lazy val nettyTransport = "io.netty" % "netty-transport" % nettyVersion
-  lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.8.4"
+  lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.8.5"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val stsSdk = "software.amazon.awssdk" % "sts" % awsSdkVersion
   lazy val scalaTest = "org.scalatest" %% "scalatest" % scalaTestVersion
