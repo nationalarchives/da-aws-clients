@@ -151,7 +151,7 @@ object DADynamoDBClient:
     .credentialsProvider(DefaultCredentialsProvider.builder.build)
     .build()
 
-  private val reservedWords = List("ttl") // Can add more if we need them
+  val reservedWords = List("ttl", "input") // Can add more if we need them
 
   extension [K, T](l: util.List[util.Map[K, T]])
     private def toScala: List[Map[K, T]] = l.asScala.toList.map(_.asScala.toMap)

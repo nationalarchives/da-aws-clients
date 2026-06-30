@@ -8,7 +8,7 @@ import org.mockito.Mockito.{times, verify, when}
 import org.scalatest.NonImplicitAssertions
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers.*
-import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor2}
+import org.scalatest.prop.{TableDrivenPropertyChecks, TableFor1, TableFor2}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scanamo.generic.auto.*
 import org.scanamo.query.ConditionExpression.*
@@ -235,40 +235,48 @@ class DADynamoDBClientTest
     Option(updateItemCaptorValue.conditionExpression()) should be(None)
   }
 
-  "updateAttributeValues" should "pass in the correct values to the UpdateItemRequest if the ttl field is updated" in {
-    val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
-    val sdkHttpResponse = SdkHttpResponse
-      .builder()
-      .statusCode(200)
-      .build()
+  val reservedWordsTable: TableFor1[String] = Table(
+    "reservedWord"
+  ) ++ reservedWords
 
-    val updateItemResponseBuilder = UpdateItemResponse.builder()
-    updateItemResponseBuilder.sdkHttpResponse(sdkHttpResponse)
+  forAll(reservedWordsTable) { reservedWord =>
+    "updateAttributeValues" should s"pass in the correct values to the UpdateItemRequest if the $reservedWord field is updated" in {
+      val mockDynamoDbAsyncClient = mock[DynamoDbAsyncClient]
+      val sdkHttpResponse = SdkHttpResponse
+        .builder()
+        .statusCode(200)
+        .build()
 
-    val clientGetItemResponse = updateItemResponseBuilder.build()
-    val clientGetItemResponseInCf = CompletableFuture.completedFuture(clientGetItemResponse)
-    val updateItemCaptor: ArgumentCaptor[UpdateItemRequest] = ArgumentCaptor.forClass(classOf[UpdateItemRequest])
+      val updateItemResponseBuilder = UpdateItemResponse.builder()
+      updateItemResponseBuilder.sdkHttpResponse(sdkHttpResponse)
 
-    when(mockDynamoDbAsyncClient.updateItem(updateItemCaptor.capture())).thenReturn(clientGetItemResponseInCf)
+      val clientGetItemResponse = updateItemResponseBuilder.build()
+      val clientGetItemResponseInCf = CompletableFuture.completedFuture(clientGetItemResponse)
+      val updateItemCaptor: ArgumentCaptor[UpdateItemRequest] = ArgumentCaptor.forClass(classOf[UpdateItemRequest])
 
-    val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
+      when(mockDynamoDbAsyncClient.updateItem(updateItemCaptor.capture())).thenReturn(clientGetItemResponseInCf)
 
-    val dynamoDbRequest =
-      DADynamoDbRequest(
-        "mockTableName",
-        Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
-        Map("ttl" -> AttributeValue.builder().s("1").build())
-      )
+      val client = DADynamoDBClient[IO](mockDynamoDbAsyncClient)
 
-    client.updateAttributeValues(dynamoDbRequest).unsafeRunSync()
-    val updateItemCaptorValue = updateItemCaptor.getValue
+      val dynamoDbRequest =
+        DADynamoDbRequest(
+          "mockTableName",
+          Map("mockPrimaryKeyName" -> AttributeValue.builder().s("mockPrimaryKeyValue").build()),
+          Map(reservedWord -> AttributeValue.builder().s("1").build())
+        )
 
-    updateItemCaptorValue.tableName() should be("mockTableName")
-    updateItemCaptorValue.key().toString should be("""{mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue)}""")
-    updateItemCaptorValue.updateExpression should be("SET #tt = :ttl")
-    updateItemCaptorValue.expressionAttributeValues.asScala(":ttl").s should be("1")
-    updateItemCaptorValue.expressionAttributeNames().asScala("#tt") should be("ttl")
-    Option(updateItemCaptorValue.conditionExpression()) should be(None)
+      client.updateAttributeValues(dynamoDbRequest).unsafeRunSync()
+      val updateItemCaptorValue = updateItemCaptor.getValue
+
+      val modifiedKey = s"#${reservedWord.dropRight(1)}"
+
+      updateItemCaptorValue.tableName() should be("mockTableName")
+      updateItemCaptorValue.key().toString should be("""{mockPrimaryKeyName=AttributeValue(S=mockPrimaryKeyValue)}""")
+      updateItemCaptorValue.updateExpression should be(s"SET $modifiedKey = :$reservedWord")
+      updateItemCaptorValue.expressionAttributeValues.asScala(s":$reservedWord").s should be("1")
+      updateItemCaptorValue.expressionAttributeNames().asScala(modifiedKey) should be(reservedWord)
+      Option(updateItemCaptorValue.conditionExpression()) should be(None)
+    }
   }
 
   "updateAttributeValues" should "pass in the correct values to the UpdateItemRequest if a condition is specified" in {
