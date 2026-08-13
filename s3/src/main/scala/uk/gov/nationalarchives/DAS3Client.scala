@@ -145,7 +145,7 @@ object DAS3Client:
     .minimumPartSizeInBytes(10 * 1024 * 1024)
     .build()
 
-  private def transferManager(asyncClient: S3AsyncClient = asyncClient()): S3TransferManager = S3TransferManager
+  private def transferManager(asyncClient: S3AsyncClient): S3TransferManager = S3TransferManager
     .builder()
     .s3Client(asyncClient)
     .build()
@@ -171,9 +171,14 @@ object DAS3Client:
     DAS3Client(transferManager(asyncClient), asyncClient)
   }
 
+  def apply[F[_]: Async](): DAS3Client[F] = {
+    val client = asyncClient()
+    DAS3Client(transferManager(client), client)
+  }
+
   def apply[F[_]: Async](
-      transferManager: S3TransferManager = transferManager(),
-      asyncClient: S3AsyncClient = asyncClient()
+      transferManager: S3TransferManager,
+      asyncClient: S3AsyncClient
   ): DAS3Client[F] =
     new DAS3Client[F] {
 
