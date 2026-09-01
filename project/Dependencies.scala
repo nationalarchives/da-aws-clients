@@ -14,7 +14,7 @@ object Dependencies {
   lazy val circe = "io.circe" %% "circe-core" % circeVersion
   lazy val dynamoDB = "software.amazon.awssdk" % "dynamodb" % awsSdkVersion
   lazy val eventBridgeSdk = "software.amazon.awssdk" % "eventbridge" % awsSdkVersion
-  lazy val mockito = "org.scalatestplus" %% "mockito-5-10" % "3.2.18.0"
+  lazy val mockito = "org.scalatestplus" %% "mockito-5-12" % "3.2.19.0"
   lazy val nettyBuffer = "io.netty" % "netty-buffer" % nettyVersion
   lazy val nettyCodecHttp2 = "io.netty" % "netty-codec-http2" % nettyVersion
   lazy val nettyCodecHttp = "io.netty" % "netty-codec-http" % nettyVersion
