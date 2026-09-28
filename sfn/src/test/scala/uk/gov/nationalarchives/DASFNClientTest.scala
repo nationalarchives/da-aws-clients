@@ -18,13 +18,20 @@ class DASFNClientTest extends AnyFlatSpec {
   case class TestInput(message: String, value: String)
 
   case class SfnExecutions(name: String, sfnArn: String, input: String, status: String, taskToken: String = "")
+  case class SentFailures(taskToken: String, error: String)
   given Encoder[TestInput] = Encoder.forProduct2("message", "value")(t => (t.message, t.value))
   val arn = "arn:aws:states:eu-west-2:123456789:stateMachine:TestStateMachine"
 
-  case class Errors(startExecution: Boolean = false, listExecutions: Boolean = false, sendTaskSuccess: Boolean = false)
+  case class Errors(
+      startExecution: Boolean = false,
+      listExecutions: Boolean = false,
+      sendTaskSuccess: Boolean = false,
+      sendTaskFailure: Boolean = false
+  )
 
   def createClient(
       initial: ListBuffer[SfnExecutions],
+      failures: ListBuffer[SentFailures] = ListBuffer.empty,
       errors: Option[Errors] = None,
       expectedTaskSuccessOutput: String = "{}"
   ): SfnAsyncClient =
@@ -46,6 +53,14 @@ class DASFNClientTest extends AnyFlatSpec {
           )
           CompletableFuture.completedFuture(StartExecutionResponse.builder.build)
         }
+
+      override def sendTaskFailure(
+          sendTaskFailureRequest: SendTaskFailureRequest
+      ): CompletableFuture[SendTaskFailureResponse] =
+        if errors.exists(_.sendTaskFailure) then throw new Exception("Error sending task failure")
+        else failures += SentFailures(sendTaskFailureRequest.taskToken(), sendTaskFailureRequest.error())
+
+        taskRequestResponse(initial, sendTaskFailureRequest.taskToken(), SendTaskFailureResponse.builder.build)
 
       override def listExecutions(
           listExecutionsRequest: ListExecutionsRequest
@@ -71,18 +86,25 @@ class DASFNClientTest extends AnyFlatSpec {
         if sendTaskSuccessRequest.output() != expectedTaskSuccessOutput then
           throw new Exception("Expected output doesn't match")
         else if errors.exists(_.sendTaskSuccess) then throw new Exception("Error sending task success")
-        else
-          initial
-            .find(_.taskToken == sendTaskSuccessRequest.taskToken())
-            .map { sfnExection =>
-              CompletableFuture.completedFuture(SendTaskSuccessResponse.builder.build)
-            }
-            .getOrElse(
-              throw TaskDoesNotExistException.builder
-                .message(s"Task ${sendTaskSuccessRequest.taskToken()} does not exist")
-                .build
-            )
+        else taskRequestResponse(initial, sendTaskSuccessRequest.taskToken(), SendTaskSuccessResponse.builder.build)
       }
+
+  private def taskRequestResponse[T <: SfnResponse](
+      initial: ListBuffer[SfnExecutions],
+      taskToken: String,
+      response: T
+  ) = {
+    initial
+      .find(_.taskToken == taskToken)
+      .map { sfnExecution =>
+        CompletableFuture.completedFuture(response)
+      }
+      .getOrElse(
+        throw TaskDoesNotExistException.builder
+          .message(s"Task $taskToken does not exist")
+          .build
+      )
+  }
 
   "startExecution" should "start an execution with the correct parameters when no name is provided" in {
     val sfnExecutions = ListBuffer[SfnExecutions]()
@@ -183,7 +205,7 @@ class DASFNClientTest extends AnyFlatSpec {
     val initialExecutions = ListBuffer(
       SfnExecutions("name1running", "arn1", "", "running", "taskToken")
     )
-    val sfnAsyncClient = createClient(initialExecutions, None, """{"test":true}""")
+    val sfnAsyncClient = createClient(initialExecutions, ListBuffer.empty, None, """{"test":true}""")
     val client = DASFNClient[IO](sfnAsyncClient)
     case class Output(test: Boolean)
 
@@ -200,5 +222,56 @@ class DASFNClientTest extends AnyFlatSpec {
       client.sendTaskSuccess("taskToken").unsafeRunSync()
     }
     ex.getMessage should equal("Error sending task success")
+  }
+
+  "sendTaskFailure" should "return no errors if the task token is valid" in {
+    val initialExecutions = ListBuffer(
+      SfnExecutions("name1running", "arn1", "", "running", "taskToken")
+    )
+    val sentFailures: ListBuffer[SentFailures] = ListBuffer.empty
+    val sfnAsyncClient = createClient(initialExecutions, sentFailures)
+    val client = DASFNClient[IO](sfnAsyncClient)
+
+    client.sendTaskFailure("taskToken").unsafeRunSync()
+
+    sentFailures.head.taskToken should equal("taskToken")
+  }
+
+  "sendTaskFailure" should "return an error if the task token is invalid" in {
+    val initialExecutions = ListBuffer(
+      SfnExecutions("name1running", "arn1", "", "running", "taskToken")
+    )
+    val sfnAsyncClient = createClient(initialExecutions)
+    val client = DASFNClient[IO](sfnAsyncClient)
+
+    val ex = intercept[TaskDoesNotExistException] {
+      client.sendTaskFailure("invalidTaskToken").unsafeRunSync()
+    }
+    ex.getMessage should equal("Task invalidTaskToken does not exist")
+  }
+
+  "sendTaskFailure" should "return a custom error if one is provided" in {
+    val initialExecutions = ListBuffer(
+      SfnExecutions("name1running", "arn1", "", "running", "taskToken")
+    )
+    val sentFailures: ListBuffer[SentFailures] = ListBuffer.empty
+    val sfnAsyncClient = createClient(initialExecutions, sentFailures, None, """{"test":true}""")
+    val client = DASFNClient[IO](sfnAsyncClient)
+
+    client.sendTaskFailure("taskToken", Option("customError")).unsafeRunSync()
+
+    sentFailures.head.error should equal("customError")
+    sentFailures.head.taskToken should equal("taskToken")
+  }
+
+  "sendTaskFailure" should "return an error if there is an error with the sdk" in {
+    val initialExecutions = ListBuffer[SfnExecutions]()
+    val sfnAsyncClient = createClient(initialExecutions, errors = Option(Errors(sendTaskFailure = true)))
+    val client = DASFNClient[IO](sfnAsyncClient)
+
+    val ex = intercept[Exception] {
+      client.sendTaskFailure("taskToken").unsafeRunSync()
+    }
+    ex.getMessage should equal("Error sending task failure")
   }
 }
