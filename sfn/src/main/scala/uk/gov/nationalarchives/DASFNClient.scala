@@ -10,6 +10,7 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sfn.SfnAsyncClient
 import software.amazon.awssdk.services.sfn.model.{
   ListExecutionsRequest,
+  SendTaskFailureRequest,
   SendTaskSuccessRequest,
   StartExecutionRequest,
   StartExecutionResponse
@@ -44,9 +45,36 @@ trait DASFNClient[F[_]: Async]:
       enc: Encoder[T]
   ): F[StartExecutionResponse]
 
+  /** Lists step function executions for a given arn and status
+    * @param stepFunctionArn
+    *   The arn of the step function
+    * @param status
+    *   The status of the executions to filter by
+    * @return
+    *   a list of execution names
+    */
   def listStepFunctions(stepFunctionArn: String, status: Status): F[List[String]]
 
+  /** Sends task success with the given task token and optional output.
+    * @param taskToken
+    *   The task token to send a failure message for.
+    * @param potentialOutput
+    *   An optional output object. Requires an encoder to convert this to a JSON string.
+    * @tparam T
+    *   The type of the optional output an the implicit encoder.
+    * @return
+    *   F[Unit]
+    */
   def sendTaskSuccess[T: Encoder](taskToken: String, potentialOutput: Option[T] = None): F[Unit]
+
+  /** @param taskToken
+    *   The task token to send a failure message for.
+    * @param potentialError
+    *   An optional error string to send with the failure.
+    * @return
+    *   F[Unit]
+    */
+  def sendTaskFailure(taskToken: String, potentialError: Option[String] = None): F[Unit]
 
 object DASFNClient:
 
@@ -70,6 +98,14 @@ object DASFNClient:
         .build
       sfnAsyncClient.sendTaskSuccess(sendTaskSuccessRequest).liftF.void
     }
+
+    override def sendTaskFailure(taskToken: String, potentialError: Option[String]): F[Unit] =
+      val sendTaskFailureRequest = SendTaskFailureRequest.builder
+        .taskToken(taskToken)
+        .error(potentialError.orNull)
+        .build
+
+      sfnAsyncClient.sendTaskFailure(sendTaskFailureRequest).liftF.void
 
     override def listStepFunctions(stepFunctionArn: String, status: Status): F[List[String]] = {
       val listExecutionsRequest = ListExecutionsRequest.builder
