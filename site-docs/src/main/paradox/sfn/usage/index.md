@@ -17,11 +17,11 @@ The method will start an execution of the state machine described by the ARN and
 
 The list step functions method will return the names of any step functions with the given arn and status.
 
-Send task success returns Unit because the response doesn't contain any useful information. If the task token doesn't exist, an exception will be thrown. 
+sendTaskSuccess returns Unit because the response doesn't contain any useful information. If the task token doesn't exist, an exception will be thrown. 
 If potentialOutput is provided, this is converted to JSON using the `Encoder` and returned as the response. Otherwise, an empty JSON object is returned.
 
-Send task failure returns Unit because the response doesn't contain any useful information. If the task token doesn't exist, an exception will be thrown.
-If potentialError os provided, this error is returned to the Step Function otherwise null is returned.
+sendTaskFailure returns Unit because the response doesn't contain any useful information. If the task token doesn't exist, an exception will be thrown.
+If potentialError is provided, this error is returned to the Step Function, otherwise null is returned.
 @@@ index
 
 * [Zio](zio.md)
