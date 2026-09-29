@@ -23,4 +23,10 @@ import io.circe.generic.auto._ // Used to provide Encoder[T] but you can provide
     val listStepFunctions = client.listStepFunctions(arn, Status.Running)
     
     val sendTaskSuccess = client.sendTaskSuccess("taskToken")
+    
+    case class Output(field: String)
+    val sendTaskSuccess = client.sendTaskSuccess("taskToken", Option(Output("test")))
+  
+    client.sentTaskFailure("taskToken")
+    client.sentTaskFailure("taskToken", Option("A custom error"))
 ```
