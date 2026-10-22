@@ -112,13 +112,17 @@ trait DASecretsManagerClient[F[_]: Async]:
     */
   def awaitRotationCompletion(): F[Unit] 
 
-  /** Waits for the secret rotation to complete with a maximum number of attempts. This is used to ensure that the secret has been rotated before proceeding with any further actions. 
+  /** Waits for the secret rotation to complete with a maximum number of attempts. This is used to ensure that the secret has been rotated before proceeding with any further actions.
+   * @param pollingInterval
+   *   The interval in milliseconds between each attempt to check for rotation completion.
+   * @param maxAttempts
+   *   The maximum number of attempts to check for rotation completion.
     * @param maxAttempts
     *   The maximum number of attempts to check for rotation completion.
     * @return
     *   Unit wrapped in F[_]
     */
-  def awaitRotationCompletion(maxAttempts: Int): F[Unit]
+  def awaitRotationCompletion(pollingInterval: Int, maxAttempts: Int): F[Unit]
   
 object DASecretsManagerClient:
 
@@ -133,7 +137,7 @@ object DASecretsManagerClient:
     case Current, Pending, Previous
 
   private val maxAttemptsForRotationCompletion = 3
-  private val rotationCompletionCheckInterval = 5.seconds
+  private val rotationCompletionCheckInterval = 5000
   
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   private lazy val secretsManagerAsyncClient: SecretsManagerAsyncClient = SecretsManagerAsyncClient.builder
@@ -190,9 +194,9 @@ object DASecretsManagerClient:
           .build
         secretsManagerAsyncClient.updateSecretVersionStage(request).liftF
 
-      override def awaitRotationCompletion(): F[Unit] = awaitRotationCompletion(maxAttemptsForRotationCompletion)
+      override def awaitRotationCompletion(): F[Unit] = awaitRotationCompletion(rotationCompletionCheckInterval, maxAttemptsForRotationCompletion)
       
-      override def awaitRotationCompletion(remainingAttempts: Int): F[Unit] = {
+      override def awaitRotationCompletion(pollingInterval: Int, remainingAttempts: Int): F[Unit] = {
         describeSecret().flatMap { response =>
           val stages = response.versionIdsToStages().asScala
           
@@ -213,7 +217,7 @@ object DASecretsManagerClient:
           }  else if (remainingAttempts <= 1) {
             Async[F].raiseError(new RuntimeException("Secret rotation did not complete within the maximum number of attempts"))
           } else  {
-            Temporal[F].sleep(rotationCompletionCheckInterval) *> awaitRotationCompletion(remainingAttempts - 1)
+            Temporal[F].sleep(pollingInterval.milliseconds) *> awaitRotationCompletion(pollingInterval, remainingAttempts - 1)
           }
         }
       }

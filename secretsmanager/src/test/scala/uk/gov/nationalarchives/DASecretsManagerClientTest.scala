@@ -304,7 +304,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
       .thenReturn(CompletableFuture.completedFuture(mockResponse))
     val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
     val ex = intercept[Exception] {
-      client.awaitRotationCompletion(2).unsafeRunSync()
+      client.awaitRotationCompletion(2000, 2).unsafeRunSync()
     }
     ex.getMessage should equal("Secret rotation did not complete within the maximum number of attempts")
   }
@@ -320,7 +320,7 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
       .thenReturn(CompletableFuture.completedFuture(mockResponse1))
       .thenReturn(CompletableFuture.completedFuture(mockResponse2))
     val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
-    noException should be thrownBy client.awaitRotationCompletion(2).unsafeRunSync()
+    noException should be thrownBy client.awaitRotationCompletion(2000, 2).unsafeRunSync()
   }
 
   private def checkUpdateSecretVersionResponse(
