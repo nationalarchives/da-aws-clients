@@ -1,20 +1,23 @@
 package uk.gov.nationalarchives
 
 import cats.effect.Async
-import cats.implicits._
+import cats.effect.Temporal
+import cats.implicits.*
 import io.circe.Printer.noSpaces
-import io.circe._
+import io.circe.*
 import io.circe.parser.decode
-import io.circe.syntax._
+import io.circe.syntax.*
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerAsyncClient
-import software.amazon.awssdk.services.secretsmanager.model._
-import uk.gov.nationalarchives.DASecretsManagerClient._
-import uk.gov.nationalarchives.DASecretsManagerClient.Stage._
+import software.amazon.awssdk.services.secretsmanager.model.*
+import uk.gov.nationalarchives.DASecretsManagerClient.*
+import uk.gov.nationalarchives.DASecretsManagerClient.Stage.*
 
 import java.util.concurrent.CompletableFuture
+import scala.jdk.CollectionConverters.*
+import scala.concurrent.duration.DurationInt
 
 /** A secrets manager client. It is written generically so can be used for any effect which has an Async instance.
   * Requires an implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -102,7 +105,21 @@ trait DASecretsManagerClient[F[_]: Async]:
       potentialRemoveFromVersionId: Option[String],
       stage: Stage = Current
   ): F[UpdateSecretVersionStageResponse]
+  
+  /** Waits for the secret rotation to complete. This is used to ensure that the secret has been rotated before proceeding with any further actions. 
+    * @return
+    *   Unit wrapped in F[_]
+    */
+  def awaitRotationCompletion(): F[Unit] 
 
+  /** Waits for the secret rotation to complete with a maximum number of attempts. This is used to ensure that the secret has been rotated before proceeding with any further actions. 
+    * @param maxAttempts
+    *   The maximum number of attempts to check for rotation completion.
+    * @return
+    *   Unit wrapped in F[_]
+    */
+  def awaitRotationCompletion(maxAttempts: Int): F[Unit]
+  
 object DASecretsManagerClient:
 
   /** Represents a stage a secret can be in. The only possible values are Current, Pending and Previous
@@ -115,6 +132,9 @@ object DASecretsManagerClient:
 
     case Current, Pending, Previous
 
+  private val maxAttemptsForRotationCompletion = 3
+  private val rotationCompletionCheckInterval = 5.seconds
+  
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   private lazy val secretsManagerAsyncClient: SecretsManagerAsyncClient = SecretsManagerAsyncClient.builder
     .region(Region.EU_WEST_2)
@@ -170,6 +190,34 @@ object DASecretsManagerClient:
           .build
         secretsManagerAsyncClient.updateSecretVersionStage(request).liftF
 
+      override def awaitRotationCompletion(): F[Unit] = awaitRotationCompletion(maxAttemptsForRotationCompletion)
+      
+      override def awaitRotationCompletion(remainingAttempts: Int): F[Unit] = {
+        describeSecret().flatMap { response =>
+          val stages = response.versionIdsToStages().asScala
+          
+          val currentVersion = stages.collectFirst {
+            case (version, stageLabels) if stageLabels.contains(Stage.Current.toString) => version
+          }
+          
+          val pendingVersion = stages.collectFirst {
+            case (version, stageLabels) if stageLabels.contains(Stage.Pending.toString) => version
+          }
+          
+          val rotationComplete = currentVersion.exists { current =>
+            pendingVersion.forall { _ == current }
+          }
+          
+          if (rotationComplete) {
+            Async[F].unit
+          }  else if (remainingAttempts <= 1) {
+            Async[F].raiseError(new RuntimeException("Secret rotation did not complete within the maximum number of attempts"))
+          } else  {
+            Temporal[F].sleep(rotationCompletionCheckInterval) *> awaitRotationCompletion(remainingAttempts - 1)
+          }
+        }
+      }
+      
       private def secretValue[T](stage: Stage, versionId: Option[String] = None)(using decoder: Decoder[T]) =
         val builder = GetSecretValueRequest.builder
           .secretId(secretId)
