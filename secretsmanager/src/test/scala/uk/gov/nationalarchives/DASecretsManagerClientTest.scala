@@ -5,7 +5,7 @@ import cats.effect.unsafe.implicits.global
 import io.circe.generic.auto.*
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentCaptor
-import org.mockito.Mockito.{reset, when}
+import org.mockito.Mockito.{reset, times, verify, when}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
@@ -264,6 +264,67 @@ class DASecretsManagerClientTest extends AnyFlatSpec with MockitoSugar with Befo
     val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
     client.updateSecretVersionStage(Option("moveToVersion"), None).unsafeRunSync()
     updateSecretVersionStageCaptor.getValue.removeFromVersionId() should equal(null)
+  }
+
+  "awaitRotationCompletion" should "return an error if the client returns an error" in {
+    when(secretsManagerAsyncClient.describeSecret(any[DescribeSecretRequest]))
+      .thenThrow(new RuntimeException("Error from client"))
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
+    val ex = intercept[Exception] {
+      client.awaitRotationCompletion(2000, 3).unsafeRunSync()
+    }
+    ex.getMessage should equal("Error from client")
+  }
+
+  "awaitRotationCompletion" should "return success when the secret has been rotated by confirming that pending stage does not exist" in {
+    val mockResponse = DescribeSecretResponse.builder
+      .versionIdsToStages(Map("version1" -> List(Current.toString).asJava).asJava)
+      .build()
+    when(secretsManagerAsyncClient.describeSecret(any[DescribeSecretRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockResponse))
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
+    noException should be thrownBy client.awaitRotationCompletion(2000, 3).unsafeRunSync()
+  }
+
+  "awaitRotationCompletion" should "return success when pending stage exists and it points to current stage" in {
+    val mockResponse = DescribeSecretResponse.builder
+      .versionIdsToStages(Map("version1" -> List(Current.toString, Pending.toString).asJava).asJava)
+      .build()
+    when(secretsManagerAsyncClient.describeSecret(any[DescribeSecretRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockResponse))
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
+    noException should be thrownBy client.awaitRotationCompletion(2000, 3).unsafeRunSync()
+  }
+
+  "awaitRotationCompletion" should "return an error when rotation does not happen in specified number of attempts" in {
+    val mockResponse = DescribeSecretResponse.builder
+      .versionIdsToStages(Map("version1" -> List(Pending.toString).asJava).asJava)
+      .build()
+    when(secretsManagerAsyncClient.describeSecret(any[DescribeSecretRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockResponse))
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
+    val ex = intercept[Exception] {
+      client.awaitRotationCompletion(2000, 2).unsafeRunSync()
+    }
+    verify(secretsManagerAsyncClient, times(2)).describeSecret(any[DescribeSecretRequest])
+    ex.getMessage should equal("Secret rotation did not complete within 2 attempts")
+  }
+
+  "awaitRotationCompletion" should "attempt to check again if pending points to different version than current" in {
+    val mockResponse1 = DescribeSecretResponse.builder
+      .versionIdsToStages(
+        Map("version1" -> List(Current.toString).asJava, "version2" -> List(Pending.toString).asJava).asJava
+      )
+      .build()
+    val mockResponse2 = DescribeSecretResponse.builder
+      .versionIdsToStages(Map("version2" -> List(Current.toString).asJava).asJava)
+      .build()
+    when(secretsManagerAsyncClient.describeSecret(any[DescribeSecretRequest]))
+      .thenReturn(CompletableFuture.completedFuture(mockResponse1))
+      .thenReturn(CompletableFuture.completedFuture(mockResponse2))
+    val client = DASecretsManagerClient[IO](secretId, secretsManagerAsyncClient)
+    noException should be thrownBy client.awaitRotationCompletion(2000, 2).unsafeRunSync()
+    verify(secretsManagerAsyncClient, times(2)).describeSecret(any[DescribeSecretRequest])
   }
 
   private def checkUpdateSecretVersionResponse(

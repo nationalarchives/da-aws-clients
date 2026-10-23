@@ -1,20 +1,23 @@
 package uk.gov.nationalarchives
 
 import cats.effect.Async
-import cats.implicits._
+import cats.effect.Temporal
+import cats.implicits.*
 import io.circe.Printer.noSpaces
-import io.circe._
+import io.circe.*
 import io.circe.parser.decode
-import io.circe.syntax._
+import io.circe.syntax.*
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerAsyncClient
-import software.amazon.awssdk.services.secretsmanager.model._
-import uk.gov.nationalarchives.DASecretsManagerClient._
-import uk.gov.nationalarchives.DASecretsManagerClient.Stage._
+import software.amazon.awssdk.services.secretsmanager.model.*
+import uk.gov.nationalarchives.DASecretsManagerClient.*
+import uk.gov.nationalarchives.DASecretsManagerClient.Stage.*
 
 import java.util.concurrent.CompletableFuture
+import scala.jdk.CollectionConverters.*
+import scala.concurrent.duration.DurationInt
 
 /** A secrets manager client. It is written generically so can be used for any effect which has an Async instance.
   * Requires an implicit instance of cats Async which is used to convert CompletableFuture to F
@@ -103,6 +106,17 @@ trait DASecretsManagerClient[F[_]: Async]:
       stage: Stage = Current
   ): F[UpdateSecretVersionStageResponse]
 
+  /** Waits for the secret rotation to complete with a maximum number of attempts. This is used to ensure that the
+    * secret has been rotated before proceeding with any further actions.
+    * @param pollingInterval
+    *   The interval in milliseconds between each attempt to check for rotation completion.
+    * @param maxAttempts
+    *   The maximum number of attempts to check for rotation completion.
+    * @return
+    *   Unit wrapped in F[_]
+    */
+  def awaitRotationCompletion(pollingInterval: Int, maxAttempts: Int): F[Unit]
+
 object DASecretsManagerClient:
 
   /** Represents a stage a secret can be in. The only possible values are Current, Pending and Previous
@@ -169,6 +183,40 @@ object DASecretsManagerClient:
           .removeFromVersionId(potentialRemoveFromVersionId.orNull)
           .build
         secretsManagerAsyncClient.updateSecretVersionStage(request).liftF
+
+      override def awaitRotationCompletion(pollingInterval: Int, maxAttempts: Int): F[Unit] = {
+        awaitRotationCompletionRecurse(pollingInterval, maxAttempts, 1)
+      }
+
+      private def awaitRotationCompletionRecurse(pollingInterval: Int, maxAttempts: Int, attempt: Int): F[Unit] = {
+        if attempt > maxAttempts then
+          Async[F].raiseError(
+            new RuntimeException(s"Secret rotation did not complete within $maxAttempts attempts")
+          )
+        else
+          describeSecret().flatMap { response =>
+            val stages = response.versionIdsToStages().asScala
+            val currentVersion = stages.collectFirst {
+              case (version, stageLabels) if stageLabels.contains(Stage.Current.toString) => version
+            }
+            val pendingVersion = stages.collectFirst {
+              case (version, stageLabels) if stageLabels.contains(Stage.Pending.toString) => version
+            }
+            val rotationComplete = currentVersion.exists { current =>
+              pendingVersion.forall {
+                _ == current
+              }
+            }
+
+            if rotationComplete then Async[F].unit
+            else
+              Temporal[F].sleep(pollingInterval.milliseconds) *> awaitRotationCompletionRecurse(
+                pollingInterval,
+                maxAttempts,
+                attempt + 1
+              )
+          }
+      }
 
       private def secretValue[T](stage: Stage, versionId: Option[String] = None)(using decoder: Decoder[T]) =
         val builder = GetSecretValueRequest.builder
