@@ -105,25 +105,18 @@ trait DASecretsManagerClient[F[_]: Async]:
       potentialRemoveFromVersionId: Option[String],
       stage: Stage = Current
   ): F[UpdateSecretVersionStageResponse]
-  
-  /** Waits for the secret rotation to complete. This is used to ensure that the secret has been rotated before proceeding with any further actions. 
-    * @return
-    *   Unit wrapped in F[_]
-    */
-  def awaitRotationCompletion(): F[Unit] 
 
-  /** Waits for the secret rotation to complete with a maximum number of attempts. This is used to ensure that the secret has been rotated before proceeding with any further actions.
-   * @param pollingInterval
-   *   The interval in milliseconds between each attempt to check for rotation completion.
-   * @param maxAttempts
-   *   The maximum number of attempts to check for rotation completion.
+  /** Waits for the secret rotation to complete with a maximum number of attempts. This is used to ensure that the
+    * secret has been rotated before proceeding with any further actions.
+    * @param pollingInterval
+    *   The interval in milliseconds between each attempt to check for rotation completion.
     * @param maxAttempts
     *   The maximum number of attempts to check for rotation completion.
     * @return
     *   Unit wrapped in F[_]
     */
   def awaitRotationCompletion(pollingInterval: Int, maxAttempts: Int): F[Unit]
-  
+
 object DASecretsManagerClient:
 
   /** Represents a stage a secret can be in. The only possible values are Current, Pending and Previous
@@ -136,9 +129,6 @@ object DASecretsManagerClient:
 
     case Current, Pending, Previous
 
-  private val maxAttemptsForRotationCompletion = 3
-  private val rotationCompletionCheckInterval = 5000
-  
   private lazy val httpClient: SdkAsyncHttpClient = NettyNioAsyncHttpClient.builder().build()
   private lazy val secretsManagerAsyncClient: SecretsManagerAsyncClient = SecretsManagerAsyncClient.builder
     .region(Region.EU_WEST_2)
@@ -194,34 +184,40 @@ object DASecretsManagerClient:
           .build
         secretsManagerAsyncClient.updateSecretVersionStage(request).liftF
 
-      override def awaitRotationCompletion(): F[Unit] = awaitRotationCompletion(rotationCompletionCheckInterval, maxAttemptsForRotationCompletion)
-      
-      override def awaitRotationCompletion(pollingInterval: Int, remainingAttempts: Int): F[Unit] = {
-        describeSecret().flatMap { response =>
-          val stages = response.versionIdsToStages().asScala
-          
-          val currentVersion = stages.collectFirst {
-            case (version, stageLabels) if stageLabels.contains(Stage.Current.toString) => version
-          }
-          
-          val pendingVersion = stages.collectFirst {
-            case (version, stageLabels) if stageLabels.contains(Stage.Pending.toString) => version
-          }
-          
-          val rotationComplete = currentVersion.exists { current =>
-            pendingVersion.forall { _ == current }
-          }
-          
-          if (rotationComplete) {
-            Async[F].unit
-          }  else if (remainingAttempts <= 1) {
-            Async[F].raiseError(new RuntimeException("Secret rotation did not complete within the maximum number of attempts"))
-          } else  {
-            Temporal[F].sleep(pollingInterval.milliseconds) *> awaitRotationCompletion(pollingInterval, remainingAttempts - 1)
-          }
-        }
+      override def awaitRotationCompletion(pollingInterval: Int, maxAttempts: Int): F[Unit] = {
+        awaitRotationCompletionRecurse(pollingInterval, maxAttempts, 1)
       }
-      
+
+      private def awaitRotationCompletionRecurse(pollingInterval: Int, maxAttempts: Int, attempt: Int): F[Unit] = {
+        if attempt > maxAttempts then
+          Async[F].raiseError(
+            new RuntimeException(s"Secret rotation did not complete within $maxAttempts attempts")
+          )
+        else
+          describeSecret().flatMap { response =>
+            val stages = response.versionIdsToStages().asScala
+            val currentVersion = stages.collectFirst {
+              case (version, stageLabels) if stageLabels.contains(Stage.Current.toString) => version
+            }
+            val pendingVersion = stages.collectFirst {
+              case (version, stageLabels) if stageLabels.contains(Stage.Pending.toString) => version
+            }
+            val rotationComplete = currentVersion.exists { current =>
+              pendingVersion.forall {
+                _ == current
+              }
+            }
+
+            if rotationComplete then Async[F].unit
+            else
+              Temporal[F].sleep(pollingInterval.milliseconds) *> awaitRotationCompletionRecurse(
+                pollingInterval,
+                maxAttempts,
+                attempt + 1
+              )
+          }
+      }
+
       private def secretValue[T](stage: Stage, versionId: Option[String] = None)(using decoder: Decoder[T]) =
         val builder = GetSecretValueRequest.builder
           .secretId(secretId)
