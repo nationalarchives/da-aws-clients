@@ -20,6 +20,8 @@ lazy val commonSettings = Seq(
     scalaTest % Test
   ),
   dependencyOverrides ++= Seq(
+    byteBuddy % Test,
+    byteBuddyAgent % Test,
     nettyBuffer,
     nettyCodecHttp2,
     nettyCodecHttp,
