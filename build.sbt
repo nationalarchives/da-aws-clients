@@ -172,3 +172,5 @@ lazy val docs = (project in file("site-docs"))
     paradoxProperties += ("version" -> (ThisBuild / version).value.split("-").head),
     paradoxTheme := Some(builtinParadoxTheme("generic"))
   )
+
+Global / concurrentRestrictions := Seq(Tags.limitAll(1))
