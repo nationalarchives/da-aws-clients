@@ -48,7 +48,7 @@ lazy val commonSettings = Seq(
     )
   ),
   scalacOptions ++= Seq("-Wunused:imports", "-Werror", "-language:implicitConversions"),
-  licenses := List("MIT" -> new URL("https://choosealicense.com/licenses/mit/")),
+  licenses := List("MIT" -> new URI("https://choosealicense.com/licenses/mit/").toURL),
   homepage := Some(url("https://github.com/nationalarchives/da-aws-clients")),
   useGpgPinentry := true,
   publishTo := {
