@@ -2,11 +2,14 @@ import sbt._
 
 object Dependencies {
   private val awsSdkVersion = "2.54.20"
+  private val byteBuddyVersion = "1.17.8"
   private val circeVersion = "0.14.16"
   private lazy val nettyVersion = "4.2.18.Final"
   private lazy val scalaTestVersion = "3.2.20"
 
   lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.48.5"
+  lazy val byteBuddy = "net.bytebuddy" % "byte-buddy" % byteBuddyVersion
+  lazy val byteBuddyAgent = "net.bytebuddy" % "byte-buddy-agent" % byteBuddyVersion
   lazy val catsCore = "org.typelevel" %% "cats-core" % "2.13.0"
   lazy val catsEffect = "org.typelevel" %% "cats-effect" % "3.7.1"
   lazy val circeGeneric = "io.circe" %% "circe-generic" % circeVersion
