@@ -210,7 +210,7 @@ object DASecretsManagerClient:
 
             if rotationComplete then Async[F].unit
             else
-              Temporal[F].sleep(pollingInterval.milliseconds) *> awaitRotationCompletionRecurse(
+              Temporal[F].sleep(pollingInterval.milliseconds) >> awaitRotationCompletionRecurse(
                 pollingInterval,
                 maxAttempts,
                 attempt + 1
