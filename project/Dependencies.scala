@@ -4,7 +4,7 @@ object Dependencies {
   private val awsSdkVersion = "2.54.20"
   private val byteBuddyVersion = "1.17.8"
   private val circeVersion = "0.14.16"
-  private lazy val nettyVersion = "4.2.18.Final"
+  private lazy val nettyVersion = "4.2.19.Final"
   private lazy val scalaTestVersion = "3.2.20"
 
   lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.48.5"
