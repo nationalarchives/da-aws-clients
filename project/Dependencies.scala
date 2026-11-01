@@ -7,7 +7,7 @@ object Dependencies {
   private lazy val nettyVersion = "4.2.18.Final"
   private lazy val scalaTestVersion = "3.2.20"
 
-  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.48.5"
+  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.49.0"
   lazy val byteBuddy = "net.bytebuddy" % "byte-buddy" % byteBuddyVersion
   lazy val byteBuddyAgent = "net.bytebuddy" % "byte-buddy-agent" % byteBuddyVersion
   lazy val catsCore = "org.typelevel" %% "cats-core" % "2.13.0"
