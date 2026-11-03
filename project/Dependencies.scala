@@ -1,13 +1,13 @@
 import sbt._
 
 object Dependencies {
-  private val awsSdkVersion = "2.54.20"
-  private val byteBuddyVersion = "1.17.8"
+  private val awsSdkVersion = "2.57.8"
+  private val byteBuddyVersion = "1.18.16"
   private val circeVersion = "0.14.17"
-  private lazy val nettyVersion = "4.2.18.Final"
+  private lazy val nettyVersion = "4.2.19.Final"
   private lazy val scalaTestVersion = "3.2.20"
 
-  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.48.5"
+  lazy val awsCrt = "software.amazon.awssdk.crt" % "aws-crt" % "0.49.0"
   lazy val byteBuddy = "net.bytebuddy" % "byte-buddy" % byteBuddyVersion
   lazy val byteBuddyAgent = "net.bytebuddy" % "byte-buddy-agent" % byteBuddyVersion
   lazy val catsCore = "org.typelevel" %% "cats-core" % "2.13.0"
@@ -27,7 +27,7 @@ object Dependencies {
   lazy val nettyResolver = "io.netty" % "netty-resolver" % nettyVersion
   lazy val nettyTransportClasses = "io.netty" % "netty-transport-classes-epoll" % nettyVersion
   lazy val nettyTransport = "io.netty" % "netty-transport" % nettyVersion
-  lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.8.7"
+  lazy val reactorTest = "io.projectreactor" % "reactor-test" % "3.8.8"
   lazy val s3Sdk = "software.amazon.awssdk" % "s3" % awsSdkVersion
   lazy val stsSdk = "software.amazon.awssdk" % "sts" % awsSdkVersion
   lazy val scalaTest = "org.scalatest" %% "scalatest" % scalaTestVersion
